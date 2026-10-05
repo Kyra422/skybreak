@@ -1,0 +1,31 @@
+# Local original game data and extracted resources
+/orig/
+/game-data/
+/extracted/
+/local-assets/
+/dumps/
+*.iso
+*.wbfs
+*.rvz
+*.gcz
+*.wad
+*.dol
+*.rel
+/rels.arc
+
+# Generated outputs and caches
+/build/
+/dist/
+/out/
+/cache/
+__pycache__/
+*.pyc
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+Thumbs.db
