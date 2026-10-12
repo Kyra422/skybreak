@@ -1,0 +1,44 @@
+SkyBreak {version} - componenten van derden / third-party components
+===================================================================
+
+Everything in this package is either SkyBreak/NWiiRecomp code (see LICENTIE.txt) or one of the open components below.
+Each keeps its own licence; the full texts are inside bron\ at the paths given.
+
+1. SDL2 (release-2.28.5) - zlib licence
+   bron\work\nwii-build\_deps\sdl2-src\LICENSE.txt
+   Window, input, audio. Copyright (C) 1997-2023 Sam Lantinga and contributors.
+
+2. toml++ (v3.4.0) - MIT licence
+   bron\work\nwii-build\_deps\tomlplusplus-src\LICENSE
+   Settings file parser. Copyright (c) Mark Gillard.
+
+3. Dear ImGui (v1.91.9b) - MIT licence
+   bron\work\nwii-build\_deps\imgui-src\LICENSE.txt
+   Launcher, settings and Setup user interface. Copyright (c) Omar Cornut. Also compiled into SkyBreak-Setup.exe.
+   (imgui-src\misc\fonts contains example fonts with their own open licences; SkyBreak does not use them.)
+
+4. Dolphin signature database (totaldb.dsy) - GPL-2.0-or-later
+   bron\outputs\nwiirecomp\third_party\dolphin-sigdb\COPYING (+ README.md)
+   Data file from the Dolphin Emulator Project, used at build time to name SDK functions. Redistributed verbatim.
+   Source: https://github.com/dolphin-emu/dolphin (Data/Sys/totaldb.dsy).
+
+5. GLAD OpenGL loader (vendored, generated) - MIT / public domain generator output
+   bron\outputs\nwiirecomp\nWiiRuntime\src\platform\glad
+
+6. Skyward Sword decompilation configuration (config/SOUE01: symbols, splits, expected hashes) - CC0 1.0
+   bron\outputs\skyward-sword\LICENSE
+   Contains names and addresses only, no game code or data.
+
+7. SkyBreak logo and icon - made for SkyBreak by its author; part of the SkyBreak identity (not Nintendo artwork).
+
+8. Kenney "Input Prompts" 1.5 - CC0 1.0 (public domain dedication), www.kenney.nl
+   bron\outputs\pc-tools\glyphs\stencils\KENNEY-LICENSE.txt (+ recipe.json)
+   Button pictures for Xbox, PlayStation, Switch and keyboard/mouse, recoloured by outputs\pc-tools\glyphs\make_glyph_stencils.py.
+   They are fitted to the button pictures of the player's OWN disc on the player's PC (glyph_local.py, build step 8); the
+   result in <install>\textures\glyphs belongs to that installation and is not part of this package.
+
+Not included, downloaded only with the player's consent from the official sources (see Setup > Benodigdheden):
+- Visual Studio 2022 Build Tools (Microsoft licence terms),
+- Python (PSF licence),
+- Dolphin / DolphinTool (GPL-2.0-or-later).
+Windows fonts (Segoe UI) are used from the player's own Windows installation and are not distributed.

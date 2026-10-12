@@ -1,0 +1,19 @@
+SkyBreak {version} - licentie / licence
+=======================================
+
+SkyBreak (installer, start program, build scripts and the runtime/translator sources in bron\) is a derivative work
+of NWiiRecomp and is distributed under the NWiiRecomp licence below: non-commercial use only, with attribution, and
+not under less restrictive terms. Using this software or its source code to train AI models is prohibited.
+
+Credit: NWiiRecomp by Volodymyr Vovchok (BlackLine Interactive).
+
+This package contains no code or data from The Legend of Zelda: Skyward Sword. The game is built on the player's own
+PC from the player's own disc; the result may not be shared. The Legend of Zelda: Skyward Sword is a trademark of
+Nintendo. SkyBreak is a fan project and is not affiliated with or endorsed by Nintendo.
+
+Third-party components keep their own licences: see DERDEN-LICENTIES.txt.
+
+------------------------------------------------------------------------------------------------------------------------
+NWiiRecomp licence (outputs/nwiirecomp/LICENSE, verbatim):
+------------------------------------------------------------------------------------------------------------------------
+

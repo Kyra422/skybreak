@@ -1,0 +1,17 @@
+_prolog = .text:0x00000000; // type:function size:0x2C scope:global
+_epilog = .text:0x00000030; // type:function size:0x2C scope:global
+_unresolved = .text:0x00000060; // type:function size:0x4 scope:global
+dAcOutajimaLv2_c_classInit__Fv = .text:0x00000070; // type:function size:0x64
+createHeap__16dAcOutajimaLv2_cFv = .text:0x000000E0; // type:function size:0x114
+create__16dAcOutajimaLv2_cFv = .text:0x00000200; // type:function size:0xE0
+doDelete__16dAcOutajimaLv2_cFv = .text:0x000002E0; // type:function size:0x38
+actorExecute__16dAcOutajimaLv2_cFv = .text:0x00000320; // type:function size:0x8
+draw__16dAcOutajimaLv2_cFv = .text:0x00000330; // type:function size:0x28
+__dt__16dAcOutajimaLv2_cFv = .text:0x00000360; // type:function size:0x74
+_ctors = .ctors:0x00000000; // type:label scope:global
+_dtors = .dtors:0x00000000; // type:label scope:global
+dAcOutajimaLv2_c__someFloat = .rodata:0x00000000; // type:object size:0x20 scope:local data:float
+g_profile_OBJ_UTAJIMA_LV2 = .data:0x00000000; // type:object size:0x10
+lbl_403_data_10 = .data:0x00000010; // type:object size:0x28
+lbl_403_data_38 = .data:0x00000038; // type:object size:0x1E scope:local data:string
+__vt__16dAcOutajimaLv2_c = .data:0x00000058; // type:object size:0x80

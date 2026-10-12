@@ -1,0 +1,17 @@
+_prolog = .text:0x00000000; // type:function size:0x2C scope:global
+_epilog = .text:0x00000030; // type:function size:0x2C scope:global
+_unresolved = .text:0x00000060; // type:function size:0x4 scope:global
+dTgDowsing_c_classInit__Fv = .text:0x00000070; // type:function size:0x30
+__ct__12dTgDowsing_cFv = .text:0x000000A0; // type:function size:0x60
+create__12dTgDowsing_cFv = .text:0x00000100; // type:function size:0xBC
+doDelete__12dTgDowsing_cFv = .text:0x000001C0; // type:function size:0x8
+actorExecute__12dTgDowsing_cFv = .text:0x000001D0; // type:function size:0xF4
+draw__12dTgDowsing_cFv = .text:0x000002D0; // type:function size:0x8
+checkDowsing__12dTgDowsing_cCFv = .text:0x000002E0; // type:function size:0x228
+__dt__12dTgDowsing_cFv = .text:0x00000510; // type:function size:0x70
+_ctors = .ctors:0x00000000; // type:label scope:global
+_dtors = .dtors:0x00000000; // type:label scope:global
+lbl_299_rodata_0 = .rodata:0x00000000; // type:object size:0x4 scope:local data:float
+g_profile_T_DOWSING = .data:0x00000000; // type:object size:0x10
+jumptable_299_data_10 = .data:0x00000010; // type:object size:0x2C scope:local
+__vt__12dTgDowsing_c = .data:0x0000003C; // type:object size:0x74

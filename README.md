@@ -1,61 +1,67 @@
-<div align="center">
-  <h1>SKYBREAK</h1>
-  <p><strong>A new horizon for Skyward Sword.</strong></p>
-  <p>An independent project working toward a native PC port of<br>
-  <em>The Legend of Zelda: Skyward Sword</em> for Wii.</p>
-  <p>
-    <a href="docs/STATUS.md">Project status</a> •
-    <a href="docs/ROADMAP.md">Roadmap</a> •
-    <a href="CONTRIBUTING.md">Contributing</a>
-  </p>
-</div>
+# SkyBreak
 
-> [!IMPORTANT]
-> **Skybreak does not distribute game assets or copies of the game. You must own a legally obtained copy of Skyward Sword and supply the required game files from your own copy to play Skybreak when playable builds become available.** No textures, models, music, dialogue, original game executables, disc images, or other extracted game data are provided.
+An experimental native Windows recompilation of Skyward Sword Wii USA 1.0
+(SOUE01), built locally from the player's own game. This source preview includes
+the runtime, translator, installer, launcher, local achievements, Discord Rich
+Presence and asset mod support. It contains no original game files or generated
+game code.
 
-# Overview
+## Community preview 0.21.1
 
-Skybreak aims to bring the original Wii adventure to PC through a native port, while preserving the feel of the game that started the legend.
+This version adds guided gyro calibration with a live pointer test and optional
+gravity-relative aiming. Full Wii motion and three-axis puzzles retain physical
+sensor axes. Calibration lasts for the controller connection/session. The
+installer verifies official dependency downloads and installs the mod tools.
 
-The starting point is the reverse-engineering work of [ZeldaRET's Skyward Sword decompilation](https://github.com/zeldaret/ss). Rebuilding the Wii game and making it run natively on PC are separate milestones. Skybreak's goal is a native PC executable; the decompilation alone does not provide one.
+Gameplay currently runs at 30 Hz. The existing 60-fps presentation uses computed
+in-between frames. **True 144 fps is not implemented.** See
+[the timing investigation](docs/TRUE_144_FPS.md). Physical controller feel, all
+puzzles, cutscenes and late-game equipment are not fully validated.
 
-# Project status
+## Testing and installation
 
-**Early development.** This repository starter documents the project's direction. Native gameplay, supported PC platforms, and release readiness have not been independently verified for this starter.
+Use your own SOUE01 Wii USA 1.0 game. Extract the entire verified tester package
+and run SkyBreak-Setup.exe. The first build may take time and needs Windows x64,
+Visual Studio C++ Build Tools with CMake/Ninja, and OpenGL graphics support.
+Setup checks dependencies and asks before installing them. It supports cancel,
+resume, update and repair. Save and close the game before updating.
 
-See the [status page](docs/STATUS.md) for the evidence record and the [roadmap](docs/ROADMAP.md) for planned milestones. Planned improvements are goals, not currently supported features. There is no announced release date.
+The source repository alone is not a prebuilt playable game. Build the installer
+package using the instructions below, then supply your game locally. Never
+upload your game, extracted files, save or locally built game executable.
+Read [the tester guide](docs/COMMUNITY_TESTING.md) before reporting bugs.
 
-# Setup
+## Building the installer package
 
-> [!IMPORTANT]
-> **Bring your own game.** Skybreak will not provide assets, game dumps, download links to copyrighted game files, or a complete copy of Skyward Sword. Owning the game is required; this repository is not a substitute for buying it.
+On Windows, install Visual Studio 2022 Build Tools with C++ x64, Windows SDK and
+CMake tools, plus Python 3.11+. From this repository root:
 
-### 1. Prepare your own copy
+```powershell
+outputs/installer/build-setup.cmd
+python outputs/installer/tools/build_dist.py
+```
 
-The initial decompilation baseline is **Wii NTSC-U 1.0 (USA), `SOUE01`**. This identifies the starting research target, not verified native-port compatibility. Support for other revisions and Skyward Sword HD is not claimed.
+The package appears under `outputs/vriendenpakket`. Source dependencies are
+vendored under `work/nwii-build/_deps` because the existing installer build
+layout uses those paths. The packager uses an explicit source allowlist and
+rejects game data and console-specific secrets. Only the setup/launcher stubs
+are included as executables; the game is translated and compiled on your PC.
 
-Use files extracted from your own legally obtained copy, in accordance with the rules that apply where you live. Keep those files on your own machine. Never upload them to this repository, an issue, a pull request, or a release.
+## Contributing
 
-### 2. Run Skybreak
+Start with [CONTRIBUTING](CONTRIBUTING.md). Use narrow changes and report the
+commit, input device/layout, enabled mods and reproduction steps. F8 creates a
+local image/scene report; review personal information before sharing it.
+Original game data and locally generated code do not belong in issues or PRs.
 
-Native installation steps, system requirements, and the accepted game-data format will be documented after they have been tested. This starter contains documentation and repository templates, not a playable port.
+## Credits and license
 
-# Building
+Based on [NWiiRecomp](https://github.com/BlackLineInteractive/NWiiRecomp) by
+Volodymyr Vovchok / BlackLine Interactive, with Skyward Sword symbol/configuration
+research from [ZeldaRET](https://github.com/zeldaret/ss).
+Preserve [the upstream modified license](outputs/nwiirecomp/LICENSE), including
+its non-commercial and attribution terms. Dependencies retain their own notices;
+see [CREDITS](CREDITS.md) and the installer third-party notices. No license for
+original Nintendo game content is granted.
 
-The native toolchain and build instructions still need to be verified against the actual implementation. See [Building](docs/BUILDING.md) for what must be documented before a reproducible build is announced.
-
-The upstream decompilation's Wii build commands must not be presented as Skybreak PC build instructions.
-
-# Contributing
-
-Help with platform research, reproducible build documentation, resource loading, rendering, input, and testing is welcome. Read [CONTRIBUTING](CONTRIBUTING.md) before opening an issue or pull request.
-
-Keep changes focused, explain how they were tested, and never include original game data. Bugs should identify the affected commit or release and provide steps that others can reproduce using their own game files.
-
-# Credits
-
-Thanks to the [ZeldaRET Skyward Sword decompilation team](https://github.com/zeldaret/ss) and the wider GameCube/Wii reverse-engineering community for the work that makes this project possible.
-
-See [CREDITS](CREDITS.md) for provenance and [the asset and licensing policy](docs/ASSETS_AND_LICENSING.md) for distribution rules.
-
-Skybreak is an unofficial, independent project. It is not affiliated with, sponsored by, or endorsed by Nintendo, ZeldaRET, or the Dusklight team. The Legend of Zelda and Skyward Sword names and original game content belong to their respective rights holders.
+SkyBreak is unofficial and is not affiliated with Nintendo, ZeldaRET or Dusklight.

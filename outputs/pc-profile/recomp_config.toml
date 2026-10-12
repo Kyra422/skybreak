@@ -1,0 +1,116 @@
+project_name = "SkywardSwordPC"
+# PKG10 (M7.1): paths are relative to the project root (the folder holding outputs/ and work/), so the
+# project can be moved. nwiirecomp resolves a relative path against this file's folder and its parent
+# folders (outputs/pc-profile -> outputs -> project root), and otherwise against the current directory
+# (every script runs the generator with cwd = project root, also older generator builds).
+input_game_dir = "work/pc-game"
+output_dir = "outputs/pc-prototype"
+runtime_source_dir = "outputs/nwiirecomp/nWiiRuntime"
+sdk_sigdb = "outputs/nwiirecomp/third_party/dolphin-sigdb/totaldb.dsy"
+symbols_csv = "outputs/pc-profile/symbols.csv"
+symbol_prefix = "ss_"
+split_output = true
+instructions_per_file = 5000
+
+[system]
+platform = "wii"
+
+[game]
+id = "SOUE01"
+
+[input]
+mode = 6
+
+[graphics]
+backend = "opengl"
+window_width = 1280
+window_height = 720
+vsync = true
+# RES9 (M7.3) beeldinstellingen:
+# internal_scale: interne resolutie 1..6 (1 = origineel 640x528, 2 = 1280x1056, 3 = 1920x1584, ...)
+#   of "auto" (= 2 als de GPU het aankan, anders 1). Env NWII_INTERNAL_SCALE overschrijft.
+internal_scale = "auto"
+# fullscreen: true = start randloos schermvullend. F11 of Alt+Enter wisselt tijdens het spelen.
+fullscreen = false
+# aspect: "auto" (16:9 als de Wii-instelling breedbeeld is, anders 4:3), "4:3", "16:9" of "stretch".
+aspect = "auto"
+# screenshot_dir: map voor F12-screenshots (volle resolutie, BMP). Leeg = outputs/pc-testresultaten/screenshots.
+# screenshot_dir = ""
+
+[audio]
+# SPK11 (M5.4) geluid:
+# remote_speaker_volume: volume van de Wii Remote-luidspreker (zwaard-/Fi-geluiden) in de pc-mix, 0..2.
+#   0 = luidspreker uit: de game speelt die geluiden dan via de gewone (tv-)mix af.
+remote_speaker_volume = 0.8
+
+[hle_hooks]
+"803D68B0" = "SS_SCGetMplsMoviePlay"
+"803D9360" = "SS_WPADInit"
+"803F2040" = "SS_KPADInitEx"
+"803F26B0" = "SS_KPADSetConnectCallback"
+"803D9400" = "SS_WPADRegisterAllocator"
+"803DAC40" = "SS_WPADProbe"
+"803F1820" = "SS_KPADReadEx"
+"803F29B0" = "SS_KPADSetMplsWorkarea"
+"803DE830" = "SS_WPADiGetMplsStatus"
+"803DFA10" = "SS_WPADiControlMpls"
+"803DFD80" = "SS_WPADiGetMplsCalibration"
+"803F3520" = "SS_KPADGetUnifiedWpadStatus"
+"803DAFC0" = "SS_WPADGetInfoAsync"
+"803DD210" = "SS_WPADCanSendStreamData"
+"803D9430" = "SS_WPADGetRadioSensitivity"
+"802DE710" = "SS_sAssertTrace"
+"8049C530" = "SS_EggAssertTrace"
+# SPK11 (M5.4) Wii Remote speaker (nWiiRuntime src/hle/pad.cpp).
+"803DBA40" = "SS_WPADControlSpeaker"
+"803DD2A0" = "SS_WPADSendStreamData"
+"803DB9F0" = "SS_WPADIsSpeakerEnabled"
+# M2.2 cache/sync HLE (nWiiRuntime src/hle/cache_hle.cpp; SOUE01 symbols.csv ss_DC*/ss_IC*/ss_PPCSync).
+"803A4560" = "HLE_DCInvalidateRange"
+"803A4590" = "HLE_DCFlushRange"
+"803A45C0" = "HLE_DCStoreRange"
+"803A45F0" = "HLE_DCFlushRangeNoSync"
+"803A4620" = "HLE_DCStoreRangeNoSync"
+"803A4650" = "HLE_DCZeroRange"
+"803A4680" = "HLE_ICInvalidateRange"
+"803A1D10" = "HLE_PPCSync"
+# CTRL18-CAM: free-camera seam (fn_8006BF50, the empty stub called at the start of dCameraGame_c::execute; nWiiRuntime src/hle/ss_camera.cpp) and game rumble (WPADControlMotor; src/hle/ss_rumble.cpp).
+"8006BF50" = "SS_CamGameExecuteSeam"
+"803DB1E0" = "SS_WPADControlMotor"
+
+[hle]
+# Verified against SOUE01 symbols and OSDisableScheduler disassembly.
+ext_interrupt_dispatch = 0x803A91D0
+sched_lock_offset = 0x33F8
+
+[rels]
+# RELAOT (roadmap M2.7/M2.8): `nwiirecomp <this file> --rels [--rels-out DIR]` recompiles these REL
+# modules into position-independent C++ (rel_<id>.cpp + rel_aot_table.cpp, built from <export>/rels by
+# nWiiRuntime/CMakeLists.txt). rel_dir = rels.arc extracted by nWiiRecomp/tools/relfile.py
+# (work/relaot/extract.py). "all" = every .rel in rel_dir. Runtime: NWII_REL_AOT=0 disables.
+rel_dir = "work/relaot/rels"
+symbols_dir = "outputs/skyward-sword/config/SOUE01/rels"
+output_dir = "outputs/pc-prototype/rels"
+functions_h = "outputs/pc-prototype/functions.h"
+# 74 modules the game links on the new-game path (title .. Skyloft cutscene), run 20261001-182544.
+modules = [
+    "d_profileNP", "d_SoftwareKeyboardNP", "d_s_bootNP", "d_a_bombfNP",
+    "d_a_pumpkinNP", "d_a_obj_bambooNP", "d_a_obj_scattersandNP", "d_a_shop_sampleNP",
+    "d_a_birdNP", "d_a_obj_swhitNP", "d_a_col_stpNP", "d_t_player_restartNP",
+    "d_t_actionNP", "d_t_streamNP", "d_t_scene_changeNP", "d_t_sw_areaNP",
+    "d_a_obj_soilNP", "d_a_heartfNP", "d_a_obj_tuboNP", "d_a_obj_light_lineNP",
+    "d_a_obj_oct_grassNP", "d_a_obj_oct_grass_leafNP", "d_t_dowsingNP", "d_t_map_markNP",
+    "d_t_beetleNP", "d_t_effect_genNP", "d_a_e_kgNP", "d_a_t_wood_areaNP",
+    "d_t_soundNP", "d_a_co_testNP", "d_a_obj_claw_shot_tgNP", "d_a_obj_windmillNP",
+    "d_a_obj_pinwheelNP", "d_a_obj_lighthouse_lightNP", "d_a_obj_lighthouse_harpNP", "d_a_obj_bladeNP",
+    "d_a_obj_megami_islandNP", "d_a_obj_cumul_cloudNP", "d_a_obj_under_cloudNP", "d_a_obj_city_waterNP",
+    "d_a_obj_mole_coverNP", "d_a_obj_island_LODNP", "d_a_obj_sun_lightNP", "d_t_auto_messageNP",
+    "d_t_insectNP", "d_a_obj_kanban_stoneNP", "d_a_obj_pumpkin_leafNP", "d_a_obj_saveNP",
+    "d_a_obj_chairNP", "d_t_sound_areaNP", "d_t_sound_area_mgrNP", "d_a_obj_ancient_jewelsNP",
+    "d_a_obj_fruit_guts_leafNP", "d_a_insect_beetleNP", "d_a_insect_grasshopperNP", "d_a_obj_dormitory_gateNP",
+    "d_a_insect_butterflyNP", "d_a_bird_mobNP", "d_a_obj_flagNP", "d_lyt_file_selectNP",
+    "d_lyt_title_BGNP", "d_title_managerNP", "d_a_obj_kibakoNP", "d_t_at0NP",
+    "d_t_telopNP", "d_a_kanbanNP", "d_a_obj_doorNP", "d_t_reactionNP",
+    "d_a_obj_graveNP", "d_a_obj_farmlandNP", "d_a_obj_shedNP", "d_a_obj_harp_hintNP",
+    "d_a_obj_toD3_stone_figureNP", "d_a_obj_clearness_wallNP",
+]

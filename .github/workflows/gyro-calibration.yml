@@ -1,0 +1,13 @@
+name: Gyro calibration regression
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  calibration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile source-only sensor regression
+        run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_calibration_test.cpp -o /tmp/gyro-test
+      - name: Run
+        run: /tmp/gyro-test

@@ -19,7 +19,7 @@ Useful early work includes documenting the native platform boundary, verifying t
 5. Preserve upstream authorship, license notices, and dependency attribution.
 6. Review the staged diff and attachments for game data, secrets, and personal paths.
 
-You must have permission to submit the material you contribute. Do not claim ownership of upstream code or remove its notices. Dependencies need provenance and compatible terms before integration. Licensing of the eventual port must be resolved from the actual source and dependencies; this starter grants no blanket license over them.
+You must have permission to submit the material you contribute. Do not claim ownership of upstream code or remove its notices. Dependencies need provenance and compatible terms before integration. Preserve the integrated source license at outputs/nwiirecomp/LICENSE and the notices of every dependency. This project grants no blanket license over original game content.
 
 ## Game files stay local
 
@@ -31,4 +31,4 @@ Tests must use original synthetic fixtures or clearly redistributable material. 
 
 Use the issue templates. Include expected behavior, observed behavior, steps, and a build identifier. State whether you tested a native executable, a Wii rebuild, or an emulator session. Decompilation matching percentages are not native-port completion percentages.
 
-Automated tools can assist your work, but you remain responsible for understanding, provenance, correctness, and validation of everything you submit. No separate AI contribution ban is established by this starter.
+Automated tools can assist your work, but you remain responsible for understanding, provenance, correctness, and validation of everything you submit. Follow the source license, including its restriction on training AI models; code-assistance tools do not remove your responsibility to review contributions.

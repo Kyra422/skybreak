@@ -1,0 +1,55 @@
+{
+  "comment": "INSTALL19: what SkyBreak-Setup may install, only after the player's consent. The mock (--mock-prereqs) uses the same ids. An empty url means: no automatic download, Setup opens page_url and lets the player browse (route 2).",
+  "items": [
+    {
+      "id": "vs",
+      "name": "Visual Studio 2022 Build Tools (C++ x64, Windows SDK, C++ CMake tools)",
+      "publisher": "Microsoft Corporation",
+      "url": "winget: Microsoft.VisualStudio.2022.BuildTools (zonder winget: https://aka.ms/vs/17/release/vs_BuildTools.exe)",
+      "bootstrapper_url": "https://aka.ms/vs/17/release/vs_BuildTools.exe",
+      "size": "ca. 6-7 GB op de systeemschijf",
+      "license": "Microsoft Visual Studio Build Tools licentievoorwaarden",
+      "license_url": "https://visualstudio.microsoft.com/license-terms/",
+      "admin": true,
+      "changes_nl": "Installeert de Visual Studio Build Tools met C++ (MSVC x64), de Windows 11 SDK en C++ CMake tools. Het Visual Studio-installatieprogramma opent een eigen venster en Windows vraagt om beheerderstoestemming. Verwijderen kan later via Windows-instellingen > Apps.",
+      "changes_en": "Installs the Visual Studio Build Tools with C++ (MSVC x64), the Windows 11 SDK and C++ CMake tools. The Visual Studio installer opens its own window and Windows asks for administrator permission. You can remove it later via Windows Settings > Apps."
+    },
+    {
+      "id": "python",
+      "name": "Python 3.12 (eigen kopie in de SkyBreak-map)",
+      "publisher": "Python Software Foundation",
+      "url": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip",
+      "sha256": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3",
+      "md5": "fe8ef205f2e9c3ba44d0cf9954e1abd3",
+      "signer": "Python Software Foundation",
+      "size": "ca. 11 MB",
+      "license": "PSF License",
+      "license_url": "https://docs.python.org/3/license.html",
+      "admin": false,
+      "changes_nl": "Pakt Python uit in <installatiemap>\\hulpmiddelen\\python. Er verandert niets aan Windows (geen PATH, geen register). Setup controleert de digitale handtekening van python.exe. Lukt dit niet, dan via winget (alleen voor jou).",
+      "changes_en": "Extracts Python into <install folder>\\hulpmiddelen\\python. Nothing changes in Windows (no PATH, no registry). Setup checks the digital signature of python.exe. If that fails: via winget (just for you).",
+      "size_bytes": 11133606,
+      "verification": "Official HTTPS archive downloaded and checksum verified 2026-10-12; Python executable PSF Authenticode signature Valid."
+    },
+    {
+      "id": "dolphintool",
+      "name": "Dolphin (alleen DolphinTool.exe)",
+      "publisher": "Dolphin Emulator Project",
+      "url": "https://dl.dolphin-emu.org/releases/2606a/dolphin-2606a-x64.7z",
+      "page_url": "https://dolphin-emu.org/download/",
+      "size_bytes": 18886448,
+      "sha256": "4c58045f9821cb63913f4df08ea86ece3cdda9f9e646154516000fa1547e0c37",
+      "license": "GPL-2.0-or-later",
+      "license_url": "https://github.com/dolphin-emu/dolphin/blob/master/COPYING",
+      "admin": false,
+      "extract": [
+        "Dolphin-x64/DolphinTool.exe",
+        "Dolphin-x64/COPYING",
+        "Dolphin-x64/LICENSES"
+      ],
+      "changes_nl": "Downloadt Dolphin 2606a van de officiële website, controleert SHA-256 en pakt alleen DolphinTool.exe en licentieteksten uit in de SkyBreak-map. Je spel wordt lokaal uitgepakt; er worden geen spelbestanden gedownload.",
+      "changes_en": "Downloads Dolphin 2606a from the official site, verifies SHA-256, and extracts only DolphinTool.exe and license notices into SkyBreak. Your game is extracted locally; no game files are downloaded.",
+      "verification": "Official Dolphin download page lists this exact 2606a URL; downloaded archive matches the previously pinned SHA-256 and size, 2026-10-12."
+    }
+  ]
+}

@@ -29,3 +29,19 @@ __pycache__/
 *.key
 .DS_Store
 Thumbs.db
+
+# Local generated/package artifacts
+*.exe
+*.dll
+*.pdb
+*.obj
+*.lib
+*.sav
+*.arc
+*.brres
+*.xtx
+*.dmp
+/outputs/vriendenpakket/
+/work/install19/
+/work/native-temp/
+/outputs/pc-testresultaten/
