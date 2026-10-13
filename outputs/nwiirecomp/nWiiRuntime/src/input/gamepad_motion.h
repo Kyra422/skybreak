@@ -14,9 +14,9 @@
 // so tilting the far edge up/down = remote pitch, turning left/right = remote yaw, rolling = remote roll.
 // KPAD acceleration = -(specific force)/g in remote axes: (0,-1,0) level at rest, the same convention as
 // the virtual gravity (virtual_motion.h gravity(), motion_gesture.h). Because gyro and accelerometer come
-// from one rigid body and get the same rotation, the original KMPLS accelerometer revision and the
-// dPad::ex_c::acc_c swing / shake detectors see physically consistent data; nothing is filtered or
-// shaped except (optionally) a constant gyro bias measured while the controller lies still.
+// from one rigid body and get the same rotation. Full motion / three-axis puzzles keep physical
+// rates and forces, with optional constant gyro-bias correction. Aim/menu contexts additionally
+// smooth small gyro corrections and suppress idle noise (gyro_aim_filter.h); acceleration is unchanged.
 //
 // Time base. Every sensor sample keeps its own hardware interval (SDL timestamp_us), and samples are
 // merged into sub-steps of >= 4 ms (angle-preserving). The InputManager records each sub-step as one
@@ -24,6 +24,7 @@
 // KMPLS resampling and ss_boot.cpp's multi-sample KPAD reads see the real rate/accel profile instead of
 // one value per host frame. Rates are clamped to the producer contract (kVirtualMotionMaxRateRadS).
 #include "virtual_motion.h"
+#include "gyro_aim_filter.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -95,6 +96,7 @@ class GyroMotionTracker {
 public:
     bool auto_calibrate = true;
     bool allow_bias_learning = true; // Freeze bias learning during intentional hybrid aim/puzzle motion.
+    bool filter_aim = false; // Set by the context-aware source; three-axis puzzles stay physical.
     // [input] gyro_grip_tilt (radians): the far edge is raised this much when the pad is held "level".
     // The virtual remote is the pad turned by this angle nose-down about its X axis (one fixed rotation
     // for gyro and accelerometer alike, so the data stay those of one rigid body). 0 = face up is level.
@@ -102,6 +104,7 @@ public:
 
     void reset() {
         samples_.clear();
+        aim_filter_.reset();
         allow_bias_learning = true;
         has_pending_ = false;
         have_gyro_ = have_accel_ = have_prev_t_ = false;
@@ -112,12 +115,13 @@ public:
         window_reset();
         // The bias estimate belongs to the device and survives a mode toggle; reset_bias() clears it.
     }
-    void set_bias(const float v[3]) { std::copy(v,v+3,bias_);bias_valid_=true;window_reset(); }
+    void set_bias(const float v[3]) { std::copy(v,v+3,bias_);bias_valid_=true;window_reset();aim_filter_.reset(); }
     void reset_bias() { bias_[0] = bias_[1] = bias_[2] = 0.0f; bias_valid_ = false; bias_updates = 0; }
     // Drops queued samples (stalled producer: their interval cannot be delivered) but keeps the bias and
     // the last readings; the next sample starts a new time base.
     void discard() {
         samples_.clear();
+        aim_filter_.reset();
         has_pending_ = false;
         have_prev_t_ = false;
     }
@@ -222,6 +226,8 @@ public:
             float rate[3], acc[3];
             controller_to_remote(g, rate);
             controller_accel_to_kpad(s.accel, acc);
+            if (filter_aim) aim_filter_.process(rate, d[k]);
+            else aim_filter_.reset();
             if (grip_tilt != 0.0) {
                 const double c = std::cos(grip_tilt), sn = std::sin(grip_tilt);
                 for (float* v : {rate, acc}) {
@@ -339,6 +345,7 @@ private:
     }
 
     std::vector<Sample> samples_;
+    GyroAimFilter aim_filter_;
     std::vector<double> durations_;
     Sample pending_{};
     bool has_pending_ = false;

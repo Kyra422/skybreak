@@ -15,6 +15,10 @@ jobs:
         run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/include tests/interpolation_test.cpp -o /tmp/interpolation-test
       - name: Check camera, particle matching and frame pacing
         run: /tmp/interpolation-test
+      - name: Compile gyro aim filtering regression
+        run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_aim_filter_test.cpp -o /tmp/gyro-aim-test
+      - name: Check idle drift, slow aim and sensor timing
+        run: /tmp/gyro-aim-test
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

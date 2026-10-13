@@ -585,7 +585,8 @@ void GamepadSource::update(GameCubePadState pads[4], WiimoteState motes[4]) {
             frame.count = 0;
             const bool point_center = g_guest_point_center.load();
             const Situation situation = classify(g_guest_context.get(), LiveFlags::read(i));
-            gyro[i].allow_bias_learning = situation != Situation::Aim && situation != Situation::Puzzle;
+            gyro[i].filter_aim = situation == Situation::Aim || situation == Situation::Menu || situation == Situation::Event;
+            gyro[i].allow_bias_learning = situation != Situation::Aim && situation != Situation::Puzzle && situation != Situation::Event;
             if (dt_ok) {
                 const size_t n = gyro[i].produce(dt, frame.steps.data(), frame.steps.size());
                 float peak = 0.0f;
@@ -957,7 +958,8 @@ void GamepadSource::update_switch_hd(int i, const PadSnapshot& snap, GameCubePad
         drain_sensor_events(id, scratch);
         float manual_bias[3];if(calibration_bias(id,calibration_serial[i],manual_bias))gyro[i].set_bias(manual_bias);
         for (const auto& e : scratch) gyro[i].add(e);
-        gyro[i].allow_bias_learning = situation != Situation::Aim && situation != Situation::Puzzle;
+        gyro[i].filter_aim = situation == Situation::Aim || situation == Situation::Menu || situation == Situation::Event;
+        gyro[i].allow_bias_learning = situation != Situation::Aim && situation != Situation::Puzzle && situation != Situation::Event;
         if (dt_ok) {
             MeasuredSubStep steps[kMaxMeasuredSubSteps];
             const size_t n = gyro[i].produce(dt, steps, kMaxMeasuredSubSteps);

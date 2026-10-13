@@ -216,6 +216,7 @@ static void Run(Cmds &c) {
   glDisable(GL_SCISSOR_TEST);
   glColorMask(1, 1, 1, 1);
   glClearColor(0.25f, 0.25f, 0.25f, 0.25f);
+  glDepthMask(GL_TRUE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   s_r->Render(c.v);
   glFinish();
@@ -555,6 +556,40 @@ int main() {
     check(std::memcmp(before,after,4)==0,"V33 refused interpolation preserves the real EFB image");
     gx::RendererSetCompileBudget(1<<20);
     check(gx::RenderInterpFrame(*s_r,c.v,hook),"V33 complete interpolated frame is accepted after its shader becomes available");
+  }
+
+  {
+    auto depth=[] {float d;glBindFramebuffer(GL_READ_FRAMEBUFFER,s_fbo);glReadPixels(EW/4,EH/2,1,1,GL_DEPTH_COMPONENT,GL_FLOAT,&d);return double(d);};
+    auto setup=[] {Cmds c;BaseState(c);c.bp(0x88,15u|(7u<<10)|(6u<<20));c.bp(0x94,kInd>>5);c.bp(0x40,31);return c;};
+    for(int y=0;y<8;++y)for(int x=0;x<16;++x)PutRGBA8(kInd,16,x,y,17,34,51,68);
+    const int packed[3]={68,17+68*256,0x112233};
+    for(int type=0;type<3;++type){
+      auto c=setup();c.bp(0xF4,0x123400);c.bp(0xF5,8u|type);c.quad(Quad{});Run(c);
+      const double expected=double(0x123400+packed[type])/16777216.0;
+      std::printf("Z34 format%d depth %.8f want %.8f\n",type,depth(),expected);
+      check(std::fabs(depth()-expected)<2e-7,"Z34 replace uses the correct 8/16/24-bit packing and bias");
+    }
+    auto c=setup();c.bp(0xF4,0xFFFFF0);c.bp(0xF5,8);c.quad(Quad{});Run(c);
+    check(std::fabs(depth()-52.0/16777216.0)<2e-7,"Z34 depth plus bias wraps at 24 bits");
+    auto original=setup();original.bp(0xF5,0);original.quad(Quad{});Run(original);
+    const int prior=int(depth()*16777216.0);
+    c=setup();c.bp(0xF4,100);c.bp(0xF5,6);c.quad(Quad{});Run(c);
+    check(std::fabs(depth()-double((prior+100+0x112233)&0xFFFFFF)/16777216.0)<3e-7,"Z34 add includes interpolated geometry depth");
+    c=setup();c.bp(0xF4,0);c.bp(0xF5,10);c.bp(0x43,65);c.quad(Quad{});Run(c);
+    check(std::fabs(depth()-double(prior)/16777216.0)<3e-7,"Z34 early depth mode keeps geometry depth");
+    c=setup();c.bp(0xF4,0);c.bp(0xF5,10);c.bp(0xC1,AC(CA_ZERO,CA_ZERO,CA_ZERO,CA_TEXA,0)|(1u<<2));c.quad(Quad{});Run(c);
+    check(std::fabs(depth()-double(0x112233)/16777216.0)<2e-7,"Z34 depth reads raw texture before TEV channel swapping");
+    c=setup();c.bp(0xF4,1);c.bp(0xF5,10);c.quad(Quad{});c.bp(0xF4,0x200001);c.quad(Quad{});Run(c);
+    check(std::fabs(depth()-double(0x312234)/16777216.0)<2e-7,"Z34 changing only bias updates the current program uniform");
+    // A farther cyan compositing quad must not cover nearer green geometry.
+    for(int y=0;y<8;++y)for(int x=0;x<16;++x)PutRGBA8(kInd,16,x,y,204,204,204,255);
+    c=setup();c.bp(0xF4,0);c.bp(0xF5,0);c.bp(0x40,23);c.bp(0xC0,CC(CC_ZERO,CC_ZERO,CC_ZERO,CC_RASC,0));
+    Quad green;green.rgba[0]=0;green.rgba[1]=1;green.rgba[2]=0;green.rgba[3]=1;c.quad(green);
+    c.bp(0xF5,10);Quad cyan=green;cyan.rgba[2]=1;c.quad(cyan);Run(c);
+    uint8_t pixel[4];Px(EW/4,EH/2,pixel);
+    check(pixel[0]<3&&pixel[1]>250&&pixel[2]<3,"Z34 depth-texture overlay respects scene occlusion instead of painting it cyan");
+    c.bp(0xF5,0);c.quad(cyan);Run(c);Px(EW/4,EH/2,pixel);
+    check(pixel[1]>250&&pixel[2]>250,"Z34 disabling depth textures restores the geometry-depth control");
   }
 
   std::printf("%s: light7 test, %d checks, %d failures\n", fails ? "FAIL" : "PASS", checks, fails);

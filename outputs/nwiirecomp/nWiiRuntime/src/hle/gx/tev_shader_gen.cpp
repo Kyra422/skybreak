@@ -194,7 +194,6 @@ static void EmitFog(std::ostream& fs, const GXState& s) {
     const bool ortho = (p3 >> 20) & 1;
     const bool range = (s.bp[0xE8] >> 10) & 1;
     fs << "    {\n";
-    fs << "    int zCoord = clamp(int(gl_FragCoord.z * 16777216.0), 0, 0xFFFFFF);\n";
     if (!ortho)
         fs << "    float ze = (uFogF.x * 16777216.0) / float(uFogI.y - (zCoord >> uFogI.w));\n";
     else
@@ -425,6 +424,7 @@ vec4 dolphin_chan(int chan, vec3 pos, vec3 nrm, vec4 vcol) {
         fs << "ivec4 itev[4];\nivec4 ikon[4];\nivec4 itex;\nivec4 iras;\n";
     
     fs << "void main() {\n";
+    fs << "    vec4 rawTexture = vec4(0.0);\n";
     fs << "    tevReg[0] = uTevColor[0];\n";
     fs << "    tevReg[1] = uTevColor[1];\n";
     fs << "    tevReg[2] = uTevColor[2];\n";
@@ -551,6 +551,7 @@ vec4 dolphin_chan(int chan, vec3 pos, vec3 nrm, vec4 vcol) {
         } else {
             fs << "    texColor = vec4(1.0);\n";
         }
+        if (stage.texMap != 0xFF) fs << "    rawTexture = texColor;\n"; // last sample before TEV swap
         if (stage.texMap != 0xFF && texSwz != "rgba") fs << "    texColor = texColor." << texSwz << ";\n";
 
         uint32_t ksel_reg = state.bp[0xF6 + (i / 2)];
@@ -747,6 +748,24 @@ vec4 dolphin_chan(int chan, vec3 pos, vec3 nrm, vec4 vcol) {
     static const bool flat_color = std::getenv("NWII_FLATCOLOR") != nullptr;
     if (flat_color)
         fs << "    FragColor = vec4(1.0, 0.0, 0.0, 1.0);\n";
+
+    // GX depth textures (BP F4/F5), used by Lanayru's Timeshift compositing.
+    // Match Dolphin's zbias dot product and 24-bit wrapping. The source is
+    // the last TEV texture sample, not the final combined colour.
+    fs << "    int zCoord = clamp(int(gl_FragCoord.z * 16777216.0), 0, 0xFFFFFF);\n";
+    const uint32_t ztop = (state.bp[0xF5] >> 2) & 3;
+    if (ztop) {
+        fs << "    ivec4 ztex = ivec4(round(clamp(rawTexture, 0.0, 1.0) * 255.0));\n";
+        switch (state.bp[0xF5] & 3) {
+            case 0: fs << "    int textureDepth = ztex.a;\n"; break;
+            case 1: fs << "    int textureDepth = ztex.r + ztex.a * 256;\n"; break;
+            default: fs << "    int textureDepth = ztex.r * 65536 + ztex.g * 256 + ztex.b;\n"; break;
+        }
+        fs << "    zCoord = (textureDepth + uFogI.z" << (ztop == 1 ? " + zCoord" : "") << ") & 0xFFFFFF;\n";
+        // With early Z, texture depth affects fog only; late Z tests/writes it.
+        if (!(state.bp[0x43] & 64))
+            fs << "    gl_FragDepth = float(zCoord) / 16777216.0;\n";
+    }
 
     
 

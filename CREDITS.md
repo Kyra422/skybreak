@@ -30,3 +30,11 @@ Optional texture2ddecoder 1.0.6 (MIT) is installed separately for HD asset autho
 and is not vendored. No third-party character mod or game texture ships here.
 
 NWiiRecomp checkout baseline: `595f176f1d24cc54ff2e8389feed12d7fb553cc2` from BlackLineInteractive/NWiiRecomp. This preview includes local SkyBreak adaptations; it is not an unmodified upstream snapshot.
+
+Motion aiming adapts the EMA/deadband approach in Dusklight's
+[`src/dusk/gyro.cpp`](https://github.com/TwilitRealm/dusklight/blob/34a144a493b7f57adeb4034d382317c826eb5c8d/src/dusk/gyro.cpp),
+revision `34a144a493b7f57adeb4034d382317c826eb5c8d`, under
+[CC0-1.0](https://github.com/TwilitRealm/dusklight/blob/34a144a493b7f57adeb4034d382317c826eb5c8d/LICENSE.md).
+The adaptation uses sensor timestamps and preserves the Wii MotionPlus path.
+Aurora's SDL3 sensor interface was inspected as a reference; Aurora itself is
+not linked into this runtime.

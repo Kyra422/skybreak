@@ -821,12 +821,14 @@ static uint32_t DirtyForBP(uint8_t r) {
     return D_SHADER;
   if (r == 0xF3 || (r >= 0xF6 && r <= 0xFD))
     return D_SHADER;
+  if (r == 0xF4) return D_FOG; // depth-texture bias shares the unused fog-uniform component
+  if (r == 0xF5) return D_SHADER;
   if (r >= 0xE0 && r <= 0xE7)
     return D_TEVREG;
   if (r >= 0xE8 && r <= 0xF2) // fog (TEX7): fsel/proj/range enable select the code
     return D_SHADER | D_FOG;
   if (r >= 0x40 && r <= 0x43)
-    return D_PE;
+    return D_PE | (r == 0x43 ? D_SHADER : 0); // depth-texture early/late test mode
   if (r == 0x20 || r == 0x21 || r == 0x59)
     return D_SCISSOR | D_VIEWPORT;
   if (r >= 0x80 && r <= 0xBF)
@@ -1133,6 +1135,9 @@ static uint64_t ShaderUid(uint8_t *used_maps) {
                                 (((g_state.bp[0xE8] >> 10) & 1) << 4))
                              : 0u;
   add(&fogk, sizeof fogk);
+  const uint32_t ztop = (g_state.bp[0xF5] >> 2) & 3;
+  const uint32_t ztk = ztop ? ((g_state.bp[0xF5] & 15) | (g_state.bp[0x43] & 64)) : 0;
+  add(&ztk, sizeof ztk);
   // LIGHT17: EFB output quantisation (pixel format, dither, read-modify-write).
   const uint32_t qk = TEVOutputQuantKey(g_state);
   if (qk)
@@ -1519,7 +1524,7 @@ static bool UpdateGroup(uint32_t dirty, UniformValues &nv) {
     nv.fogf[3] = vpw * (float)s_efb_w / (float)s_efb_lw;
     nv.fogi[0] = (GLint)(g_state.bp[0xF2] & 0xFFFFFF);
     nv.fogi[1] = (GLint)(g_state.bp[0xEF] & 0xFFFFFF);
-    nv.fogi[2] = 0;
+    nv.fogi[2] = (GLint)(g_state.bp[0xF4] & 0xFFFFFF); // depth-texture bias, formerly unused
     nv.fogi[3] = (GLint)(g_state.bp[0xF0] & 0x1F);
     for (int i = 0; i < 12; ++i) {
       const uint32_t k = i < 10 ? g_state.bp[0xE9 + i / 2] : 0;

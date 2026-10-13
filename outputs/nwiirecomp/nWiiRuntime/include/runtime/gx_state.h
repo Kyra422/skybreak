@@ -150,6 +150,7 @@ struct GXState {
       add_u32(bp[0x42]); 
       add_u32(bp[0x43]); 
       add_u32(bp[0xF3]); 
+        add_u32(bp[0xF5] & 15); // depth-texture type and operation select shader code
       // Konst color/alpha selectors are embedded in the generated TEV shader.
       for (int i = 0xF6; i <= 0xFD; ++i) add_u32(bp[i]);
       for (int i = 0xC0; i <= 0xDF; ++i) add_u32(bp[i]); 

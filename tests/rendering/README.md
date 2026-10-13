@@ -11,7 +11,7 @@ cmake --build build/rendering
 ctest --test-dir build/rendering --output-on-failure
 ```
 
-The 36 pixel/state checks cover TEV output, indirect texture offsets, all four
+The 46 pixel/state checks cover TEV output, indirect texture offsets, all four
 indirect bit formats, current-stage bump alpha, channel lighting and swap tables.
 The final regression rewrites a GPU copy's RAM between a real and interpolated
 frame: interpolation must sample the new RAM texture while preserving the real
@@ -23,6 +23,11 @@ and accepts the frame once its shader is available.
 The pre-fix shader fails 11 checks. Restoring the pre-fix GPU-copy handling fails
 the stale-texture pixel check. The renderer before the completeness fix fails
 the incomplete-frame rejection check. Those negative controls were verified locally.
+
+Depth-texture checks cover 8/16/24-bit packing, replace/add, bias and wrapping,
+early-depth behavior, raw sampling before TEV channel swaps, dynamic bias updates,
+and a cyan overlay rejected behind nearer geometry. The previous renderer/shader
+pair fails eight of these checks and passes all previous 36 checks.
 
 The source-only `tests/interpolation_test.cpp` contains 31 checks and runs in CI
 without game data or a GPU. Its particle regressions cover a dominant burst of

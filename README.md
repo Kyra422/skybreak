@@ -21,6 +21,11 @@ particle/camera matching fixes, incomplete-frame rejection and faster recovery
 after brief interpolation slowdowns. These changes are not in the Alpha 2
 download. See [preview validation and remaining limits](docs/GRAPHICS_PREVIEW.md).
 
+**0.22.0 Preview 2** adds Dusklight-inspired gyro aiming filters and GX depth
+textures for the solid-cyan Timeshift activation bug. See
+[motion/Timeshift validation](docs/MOTION_TIMESHIFT_PREVIEW.md). Aurora itself
+has not been integrated, and these changes are not in the Alpha 2 download.
+
 This alpha includes English defaults and guides, guided gyro calibration,
 controller layouts, asset mod tools, achievements and Discord Rich Presence.
 Renderer fixes correct indirect-texture format bits, same-stage bump alpha and
