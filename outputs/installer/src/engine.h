@@ -43,7 +43,7 @@ struct Options {
 };
 
 struct Choices {
-    std::string lang = "nl";
+    std::string lang = "en";
     bool accepted = false;      // "own copy" checkbox
     fs::path disc;
     fs::path install_dir, data_dir;

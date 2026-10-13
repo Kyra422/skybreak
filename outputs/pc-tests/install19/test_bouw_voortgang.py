@@ -17,7 +17,7 @@
       <Uitvoer>\\bin\\SkyBreak-game.exe of a folder 'Spellen\\Zéldà ✦ test\\SkyBreak' -> listed by full path, the script waits
       ('wacht' JSON line with that path, then 'verder') and goes on once it has closed; a copy with the same name in ANOTHER folder
       is never listed and stays alive (nothing is killed). NEGATIVE: a name-only variant of the check lists both.
-  B8  (REL22) -SluitWacht 3 while <Uitvoer>\\SkyBreak.exe keeps running: Fout 'SkyBreak draait nog ...', Fout-Soort = 'draait'
+  B8  (REL22) -SluitWacht 3 while <Uitvoer>\\SkyBreak.exe keeps running: Fout 'SkyBreak is still running ...', Fout-Soort = 'draait'
       (Setup shows its hint), the program is still running afterwards
 Nothing is extracted; only B6 compiles (one file); B7/B8 start a harmless test double (dummy_proc.py); writes only under
 work/install19/voortgang-test.
@@ -187,7 +187,7 @@ def main():
     rc3, out3 = bouw(pal, prog3)
     _, ev3 = events(prog3)
     fout = [e for e in ev3 if e.get('status') == 'fout']
-    check('B3', rc3 == 1 and len(fout) == 1 and fout[0].get('soort') == 'schijf' and 'Europese (PAL)' in fout[0].get('msg', '') and fout[0].get('stap') == 2,
+    check('B3', rc3 == 1 and len(fout) == 1 and fout[0].get('soort') == 'schijf' and 'European (PAL)' in fout[0].get('msg', '') and fout[0].get('stap') == 2,
           f'NEGATIVE PAL folder: exit {rc3}, fout {fout[:1]}')
     prog4 = TMP / 'missing.jsonl'
     rc4, _ = bouw(TMP / 'bestaat-niet.iso', prog4)
@@ -241,7 +241,7 @@ def main():
         _, wait8, ev8 = wacht_run(src, inst, 3, 'b8')
         alive8 = d8.proc.poll() is None
     ms8 = int(wait8[1]) if len(wait8) > 1 and wait8[1].isdigit() else -1
-    check('B8', wait8[:1] == ['fout'] and len(wait8) > 3 and wait8[2] == 'draait' and 'SkyBreak draait nog' in ' '.join(wait8[3:])
+    check('B8', wait8[:1] == ['fout'] and len(wait8) > 3 and wait8[2] == 'draait' and 'SkyBreak is still running' in ' '.join(wait8[3:])
           and 2500 <= ms8 <= 20000 and alive8,
           f'-SluitWacht 3 while SkyBreak.exe runs: {" ".join(wait8[:3])} after {ms8} ms, program still running {alive8}')
     shutil.rmtree(TMP, ignore_errors=True)

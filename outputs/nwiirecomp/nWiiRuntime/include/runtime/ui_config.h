@@ -48,7 +48,7 @@ struct UiConfig {
     // LAUNCH19 (config.cpp load_launch19; the settings catalog src/ui/ui_settings_catalog.h describes every key). Keys
     // that replace an NWII_* switch reach their reader as that variable (ui_settings.cpp ApplyEnvFromConfig; a
     // variable the player set himself wins).
-    std::string language = "nl";        // [ui] language nl|en (launcher, F1 menu, notices)
+    std::string language = "en";        // [ui] language nl|en (launcher, F1 menu, notices)
     int scale = 0;                      // [ui] scale 0 = auto (by window size), else percent 75..200
     std::string accent = "gold";        // [ui] accent gold|red|sky
     std::string perf_overlay = "off";   // [ui] perf_overlay off|fps|frametime|full

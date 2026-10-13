@@ -641,7 +641,7 @@ static void test_running() {
     ch.install_dir = inst;
     bool fin = e.Finish(ch, DiscProbe{}, &ferr);
     bool intact = fs::exists(a, ec) && fs::exists(b, ec) && fs::exists(inst / L"setup" / L"install.json", ec);
-    check("K2", u.running && !u.ok && u.removed.empty() && !fin && ferr.find("SkyBreak draait nog") != std::string::npos && intact,
+    check("K2", u.running && !u.ok && u.removed.empty() && !fin && ferr.find("SkyBreak is still running") != std::string::npos && intact,
           Format("while it runs: uninstall refused (running %d, removed %zu), finish refused (%d), folder intact %d - nothing killed",
                  int(u.running), u.removed.size(), int(!fin), int(intact)));
     stop_dummy(pa, a);

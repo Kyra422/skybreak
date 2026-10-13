@@ -64,7 +64,7 @@ void Message(const std::wstring& text, const fs::path& open_dir) {
         MessageBoxW(nullptr, text.c_str(), L"SkyBreak", MB_ICONWARNING | MB_OK);
         return;
     }
-    if (MessageBoxW(nullptr, (text + L"\n\nLogmap openen?").c_str(), L"SkyBreak", MB_ICONWARNING | MB_YESNO) == IDYES)
+    if (MessageBoxW(nullptr, (text + L"\n\nOpen the log folder?").c_str(), L"SkyBreak", MB_ICONWARNING | MB_YESNO) == IDYES)
         ShellExecuteW(nullptr, L"open", open_dir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
@@ -114,8 +114,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     const fs::path settings = dir / L"instellingen.toml";
     std::error_code ec;
     if (!fs::is_regular_file(exe, ec) || !fs::is_regular_file(game / L"sys" / L"main.dol", ec)) {
-        Message(L"SkyBreak is niet compleet (" + (fs::is_regular_file(exe, ec) ? game.wstring() + L" ontbreekt" : exe.filename().wstring() + L" ontbreekt") +
-                    L").\nStart SkyBreak-Setup en kies Herstellen.",
+        Message(L"SkyBreak is incomplete (" + (fs::is_regular_file(exe, ec) ? game.wstring() + L" is missing" : exe.filename().wstring() + L" is missing") +
+                    L").\nRun SkyBreak-Setup and choose Repair.",
                 {});
         return 2;
     }
@@ -152,8 +152,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     if (!ok) {
         DWORD e = GetLastError();
         wchar_t b[64];
-        swprintf(b, 64, L" (fout %lu)", e);
-        Message(L"Het spel kon niet starten" + std::wstring(b) + L". Mogelijk blokkeert Slim app-beheer of een virusscanner het zelf gebouwde spel.", logs);
+        swprintf(b, 64, L" (error %lu)", e);
+        Message(L"The game could not start" + std::wstring(b) + L". Smart App Control or security software may be blocking the locally built game.", logs);
         return 2;
     }
     WaitForSingleObject(pi.hProcess, INFINITE);
@@ -165,12 +165,12 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     bool freeze = LogHas(log, "[FREEZE8] =====");
     if (code != 0) {
         wchar_t b[96];
-        swprintf(b, 96, L"Het spel is gestopt met foutcode %lu (0x%08lX).", code, code);
+        swprintf(b, 96, L"The game stopped with exit code %lu (0x%08lX).", code, code);
         std::wstring t = b;
-        if (LogHas(log, "[GL] fatal")) t += L"\nOpenGL werkt niet: controleer het stuurprogramma van je videokaart.";
-        Message(t + L"\nHet logboek staat in " + log.wstring(), logs);
+        if (LogHas(log, "[GL] fatal")) t += L"\nOpenGL failed: check your graphics driver.";
+        Message(t + L"\nThe log is in " + log.wstring(), logs);
     } else if (freeze) {
-        Message(L"De vastloopdetector heeft iets gemeld. Het verslag staat in " + log.wstring(), logs);
+        Message(L"The freeze detector reported an issue. The report is in " + log.wstring(), logs);
     }
     return int(code);
 }

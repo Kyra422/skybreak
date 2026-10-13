@@ -92,7 +92,7 @@ namespace {
 namespace fs = std::filesystem;
 using runtime::Config;
 
-constexpr const char* kVersion = "0.19"; // LAUNCH19: SkyBreak 0.19 (installer VERSION 0.19.0)
+constexpr const char* kVersion = "0.22.0 Alpha 1"; // LAUNCH19: SkyBreak 0.19 (installer VERSION 0.19.0)
 
 // ---------------------------------------------------------------------------------------- look
 const ImU32 kGold = IM_COL32(236, 200, 120, 255);
@@ -230,7 +230,7 @@ std::string BuildDate() {
     const std::string d = __DATE__;
     std::string month = d.substr(0, 3);
     for (int i = 0; i < 12; ++i)
-        if (month == en[i]) month = nl[i];
+        if (month == en[i]) month = en[i];
     std::string day = d.substr(4, 2);
     if (!day.empty() && day[0] == ' ') day.erase(0, 1);
     return day + " " + month + " " + d.substr(7, 4) + " " + std::string(__TIME__).substr(0, 5);
@@ -1463,25 +1463,25 @@ void CaptureReport(GLuint fbo,int w,int h) {
     g.report_error.clear();
     try {
         const auto p=runtime::progress::channel.get();
-        fs::path dir=U8(g.log_dir).parent_path()/"probleemrapporten";
+        fs::path dir=U8(g.log_dir).parent_path()/"reports";
         dir /= saves::Stamp()+"-"+std::to_string(SDL_GetTicks64());
         fs::create_directories(dir);
         g.report_path=P8(dir);
         std::vector<std::string> written;
-        SaveFboPng(fbo,w,h,P8(dir/"beeld.png"),written); // Presented game image before adding the port menu.
-        if (written.empty()) throw std::runtime_error("Screenshot kon niet worden geschreven.");
+        SaveFboPng(fbo,w,h,P8(dir/"screenshot.png"),written); // Presented game image before adding the port menu.
+        if (written.empty()) throw std::runtime_error("Could not write the screenshot.");
         {
-            std::ofstream f(dir/"situatie.txt",std::ios::binary);
+            std::ofstream f(dir/"context.txt",std::ios::binary);
             f << "SkyBreak " << kVersion << " launcher refresh / build " << BuildDate()
               << "\nSOUE01 / native PC runtime\nStage: " << p.stage << "\nRoom: " << p.room
               << "\nLayer: " << p.layer << "\nEntrance: " << p.entrance
               << "\nLink position: " << p.pos[0] << ", " << p.pos[1] << ", " << p.pos[2]
               << "\nPlaying: " << p.playing << "\nScreenshot: " << w << 'x' << h
-              << "\n\nBeschrijving / description:\n" << g.report_note
+              << "\n\nDescription:\n" << g.report_note
               << "\n\nImage is the last presented game frame; guest context may be one frame newer.\n"
               << "No savestate or GPU replay is included. Wii-save, if selected, is the last disk save.\n"
               << "For reproduction: supply route, repeatability, HD/interpolation on or off, and a short clip if helpful.\n";
-            f.flush(); if (!f) throw std::runtime_error("Situatiebestand kon niet worden geschreven.");
+            f.flush(); if (!f) throw std::runtime_error("Could not write the report context.");
         }
         diag::Request r; r.out_dir=g.report_path; r.log_dir=g.log_dir;
         r.settings_path=g.settings_path; r.system_info=SystemInfo();
@@ -1489,7 +1489,7 @@ void CaptureReport(GLuint fbo,int w,int h) {
         if (diag::MakePackage(r,&err).empty()) throw std::runtime_error(err);
         if (g.report_save) {
             const fs::path save=U8(NandRoot())/"title/00010000/534f5545/data/wiiking2.sav";
-            if (!fs::exists(save)) throw std::runtime_error("Er is nog geen opgeslagen Wii-save.");
+            if (!fs::exists(save)) throw std::runtime_error("No saved Wii game was found.");
             fs::copy_file(save,dir/"wiiking2.sav");
         }
         PushToast(Tr("PROBLEEM VASTGELEGD", "PROBLEM CAPTURED"),Tr("Beeld, locatie en diagnose zijn bewaard.", "Image, location and diagnostics saved."));

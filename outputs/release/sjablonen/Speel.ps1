@@ -1,4 +1,4 @@
-# Skyward Sword PC - starter (wordt door Speel.cmd aangeroepen).
+﻿# Skyward Sword PC - starter (wordt door Speel.cmd aangeroepen).
 # Opties voor een keer: -Schaal 1..6 (interne resolutie), -Volledig (schermvullend), -Venster, -Diagnose.
 param(
     [ValidateRange(0, 6)][int]$Schaal = 0,
@@ -26,22 +26,22 @@ if (Test-Path -LiteralPath $wijzer) {
     }
 }
 function Stop-Met([string]$Melding) { Write-Host $Melding -ForegroundColor Red; exit 1 }
-if (-not (Test-Path -LiteralPath $exe)) { Stop-Met "$(Split-Path -Leaf $exe) ontbreekt in $map\bin. Bouw opnieuw met Bouw-SkywardSword.ps1." }
-if (-not (Test-Path -LiteralPath (Join-Path $spel 'sys\main.dol'))) { Stop-Met "De spelbestanden ontbreken ($spel). Bouw opnieuw met Bouw-SkywardSword.ps1." }
+if (-not (Test-Path -LiteralPath $exe)) { Stop-Met "$(Split-Path -Leaf $exe) is missing in $map\bin. Run SkyBreak-Setup and choose Repair." }
+if (-not (Test-Path -LiteralPath (Join-Path $spel 'sys\main.dol'))) { Stop-Met "Game files are missing ($spel). Run SkyBreak-Setup and choose Repair." }
 if (-not (Test-Path -LiteralPath $instellingen)) {
     $standaard = Join-Path $map 'instellingen.standaard.toml'
     if (Test-Path -LiteralPath $standaard) { Copy-Item -LiteralPath $standaard -Destination $instellingen }
 }
 $versie = Join-Path $map 'VERSIE.txt'
 if (Test-Path -LiteralPath $versie) { Write-Host (Get-Content -LiteralPath $versie -TotalCount 1) }
-Write-Host 'F11 of Alt+Enter = schermvullend aan/uit, F12 = screenshot. Venster sluiten = stoppen.'
+Write-Host 'F11 or Alt+Enter toggles fullscreen. F12 takes a screenshot. Close the window to exit.'
 
 # Logboek van deze sessie (de nieuwste 20 blijven bewaard).
 $logMap = Join-Path $map 'logs'
 New-Item -ItemType Directory -Force -Path $logMap | Out-Null
 Get-ChildItem -LiteralPath $logMap -Filter 'speel-*.log' -File | Sort-Object Name -Descending | Select-Object -Skip 19 | Remove-Item -Force -ErrorAction SilentlyContinue
 $log = Join-Path $logMap ("speel-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
-Write-Host "Logboek: $log"
+Write-Host "Log: $log"
 
 $namen = @('NWII_HEADLESS', 'NWII_RUN_SECONDS', 'NWII_SS_INPUT_REPLAY', 'NWII_SAMPLE', 'NWII_INTERNAL_SCALE', 'NWII_FULLSCREEN')
 $oud = @{}
@@ -68,18 +68,18 @@ try {
     $vast = @(Select-String -LiteralPath $log -SimpleMatch -Pattern '[FREEZE8] =====' -ErrorAction SilentlyContinue)
     if ($vast.Count -gt 0) {
         Write-Host ''
-        Write-Host "Vastloopdetector: $($vast.Count) melding(en) in deze sessie. Het volledige verslag staat in:" -ForegroundColor Yellow
+        Write-Host "Freeze detector: $($vast.Count) report(s) this session. Full report:" -ForegroundColor Yellow
         Write-Host "  $log" -ForegroundColor Yellow
     }
 } catch { }
 if ($code -ne 0) {
     Write-Host ''
-    Write-Host ("Het spel is gestopt met foutcode {0} (0x{0:X8})." -f $code) -ForegroundColor Red
+    Write-Host ("The game stopped with exit code {0} (0x{0:X8})." -f $code) -ForegroundColor Red
     $staart = @(Get-Content -LiteralPath $log -Tail 4 -ErrorAction SilentlyContinue)
-    if ($staart.Count -gt 0) { Write-Host 'Laatste regels van het logboek:'; $staart | ForEach-Object { Write-Host "  $_" } }
+    if ($staart.Count -gt 0) { Write-Host 'Last log lines:'; $staart | ForEach-Object { Write-Host "  $_" } }
     if (Select-String -LiteralPath $log -SimpleMatch -Pattern '[GL] fatal' -Quiet -ErrorAction SilentlyContinue) {
-        Write-Host 'OpenGL werkt niet: controleer het stuurprogramma van je videokaart (of herstart de pc).' -ForegroundColor Yellow
+        Write-Host 'OpenGL failed: check your graphics driver (or restart your PC).' -ForegroundColor Yellow
     }
-    Write-Host "Volledig logboek: $log"
+    Write-Host "Full log: $log"
     exit 1
 }

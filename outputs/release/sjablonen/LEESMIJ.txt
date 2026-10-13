@@ -1,148 +1,16 @@
-﻿SKYWARD SWORD PC — LEESMIJ
-==========================
+SkyBreak — community alpha
 
-Deze map is op jouw pc gebouwd uit je eigen schijf van The Legend of Zelda: Skyward Sword
-(Amerikaanse versie 1.00, SOUE01). Het is een ontwikkelversie van een PC-port: de game draait
-van opstart tot in het spel op ~30 fps, maar nog niet alles werkt en vastlopers zijn mogelijk.
+Start SkyBreak.exe, or use Speel.cmd for the command-line launcher.
+F1: pause menu/settings. F8: capture a problem report. F12: screenshot.
+Choose your controller layout in Settings > Controls. For physical gyro,
+open Calibrate gyro, rest the controller on a stable surface, and apply the
+measurement. Calibration lasts for the current controller connection/session.
 
-BELANGRIJK: deze map bevat vertaalde Nintendo-code en de bestanden van jouw schijf.
-Alleen voor eigen gebruik. Niet delen, uploaden of verkopen.
+First test without mods. Keep your NAND/save folder backed up. The runtime is
+experimental; rendering, motion puzzles and later game areas may have issues.
+Gameplay currently runs at 30 Hz. Optional interpolation is experimental.
+Native 144 fps is not available in this tester release.
 
-
-STARTEN
--------
-Dubbelklik Speel.cmd.
-
-Voor één keer anders starten (vanuit een opdrachtvenster in deze map):
-  Speel.cmd -Schaal 3          interne resolutie 3x (1920x1584); 1 = origineel, max. 6
-  Speel.cmd -Volledig          schermvullend starten
-  Speel.cmd -Venster           in een venster starten
-  Speel.cmd -Diagnose          extra meetgegevens in het logboek
-
-Tijdens het spelen:
-  Esc of F1           menu (verder spelen, instellingen, afsluiten); ook de Mute-knop van een
-                      DualSense, Share (Xbox Series) of Capture (Switch)
-  F11 of Alt+Enter    schermvullend aan/uit
-  F12                 screenshot op volle resolutie (BMP)
-  Venster sluiten     stoppen (sla eerst op bij een savepunt in het spel)
-
-
-LAUNCHER EN MENU
-----------------
-Bij het starten verschijnt eerst het titelscherm van de launcher: SPELEN, INSTELLINGEN en
-AFSLUITEN, te bedienen met muis, toetsenbord (pijltjes + Enter) of controller (stick/kruis + A,
-B = terug). De achtergrond, het logo en het lettertype komen uit je eigen schijf; ze worden bij
-elke start opnieuw ingelezen en nergens opgeslagen. Linksonder staat of je schijf klopt
-("Schijf gereed."), rechtsonder de versie. Rechtsboven verschijnt een melding als je een
-controller aansluit of loskoppelt.
-
-INSTELLINGEN in de launcher of in het menu (Esc):
-  Beeld       interne resolutie, schermvullend, VSync, beeldverhouding, beeldtempo
-  Geluid      volume van de Wii Remote-speaker, audiovertraging
-  Besturing   gyro van de controller, greephoek, muisgevoeligheid, richtsnelheid, dode zones,
-              en de huidige indeling van toetsen en knoppen
-  Spel        waar je opslag staat (met knop "Opslagmap openen"), launcher aan/uit
-"Opslaan" schrijft de keuzes in instellingen.toml (je eigen opmerkingen blijven staan).
-Wat pas na een herstart werkt, staat erbij ("na herstart"). Terwijl het menu open is gaat je
-invoer niet naar het spel; het spel zelf loopt door.
-Launcher overslaan: zet in instellingen.toml onder [ui] "launcher = false", of start met
-  bin\SkywardSwordPC.exe <spelmap> instellingen.toml --no-launcher
-
-
-BEDIENING
----------
-De Wii-afstandsbediening met MotionPlus en de Nunchuk worden nagebootst. Toetsenbord/muis en
-een gamepad werken tegelijk.
-
-  Functie                          Toetsenbord/muis                      Gamepad
-  -------------------------------  ------------------------------------  ---------------------------------
-  Aanwijzer                        Muis bewegen                          Rechter stick
-  Aanwijzer naar het midden        -                                     Touchpad indrukken, of L3+R3
-  Link lopen (Nunchuk-stick)       W A S D                               Linker stick
-  Nunchuk C / Z                    C / Z                                 LB / LT
-  Wii A / B                        Linker- / rechtermuisknop             A / B
-  1 / 2                            1 / 2                                 X / Y
-  Plus / Min / Home                Enter / Backspace / Home              Start / Back / Guide
-  D-pad                            Pijltjestoetsen                       D-pad
-  Mikken (kantelen)                Shift ingedrukt + muis                Rechter stick
-  Zwaard zwaaien (8 richtingen)    Numpad 8/2/4/6/7/9/1/3,               Rechter stick snel wegtikken
-                                   of U I O / J L / M , .
-  Steek                            Numpad 5 of K                         RB
-  Zwaard omhoog houden             Numpad 0 of X (vasthouden)            -
-  Schild (Nunchuk-schok)           F                                     RT indrukken
-  Spin-aanval horizontaal/vert.    R / T                                 RT + stick wegtikken
-  Zwaaien met de muis              Middelste muisknop + muis snel        -
-                                   bewegen
-
-Het scherm "Point the Wii Remote at the screen": beweeg de muis (of de rechter stick) en druk A.
-
-
-INSTELLINGEN
-------------
-Alles staat in instellingen.toml in deze map (openen met Kladblok). Regels met # zijn uitleg.
-Wijzigingen gelden bij de volgende start. De fabrieksinstellingen staan in
-instellingen.standaard.toml; kopieer die over instellingen.toml om alles terug te zetten.
-Een nieuwe bouw vervangt jouw instellingen.toml niet.
-
-[graphics]
-  internal_scale   "auto" (= 2x als de videokaart het aankan) of 1 t/m 6. Hoger = scherper.
-  fullscreen       true = schermvullend starten.
-  aspect           "auto" (16:9 bij breedbeeld), "4:3", "16:9" of "stretch".
-  vsync            true/false.
-  window_width/_height   startgrootte van het venster; het venster mag je vrij vergroten.
-  screenshot_dir   map voor F12-screenshots.
-[input]
-  mode             6 = toetsenbord/muis + gamepad (aanbevolen). Eventuele extra besturingsopties
-                   staan met uitleg in dezelfde sectie.
-[audio]
-  remote_speaker_volume   volume van de Wii Remote-luidspreker (zwaard- en Fi-geluiden) in het
-                   pc-geluid, 0 t/m 2 (standaard 0.8). 0 = luidspreker uit: de game speelt die
-                   geluiden dan via het gewone geluid af.
-[nand]
-  root             map met je opgeslagen spel (zie OPSLAG).
-  widescreen       true = 16:9, false = 4:3.
-Onder "Technisch" staan het spel-ID en adressen: niet wijzigen.
-
-In paden mag je %APPDATA%, %USERPROFILE% en andere %NAAM%-variabelen gebruiken; een relatief
-pad geldt vanaf deze map.
-
-
-OPSLAG
-------
-Je opgeslagen spel (de virtuele Wii-NAND) staat standaard in
-  %APPDATA%\SkywardSwordPC\nand
-(of in gebruikersdata\nand in deze map als je met -Draagbaar hebt gebouwd). Zo blijft je
-voortgang bewaard als je deze map opnieuw bouwt of verwijdert.
-  - Back-up maken: kopieer die map.
-  - Opnieuw beginnen: verwijder die map (eerst een back-up!).
-  - Saves van de ontwikkelversie overnemen: kopieer de inhoud van pc-prototype\nand naar die map.
-
-
-ALS HET MISGAAT
----------------
-Elke sessie schrijft een logboek in logs\speel-<datum-tijd>.log (de nieuwste 20 blijven bewaard).
-Bevriest het beeld 8 seconden, dan schrijft de vastloopdetector een verslag ("[FREEZE8]") in dat
-logboek; Speel.cmd meldt dat na afloop. Stuur dat logboek mee bij een probleemmelding.
-
-Benodigd: Windows 10/11 64-bit en een videokaart met OpenGL 3.3. De exe gebruikt de Microsoft
-Visual C++-runtime (2015-2022, x64); die is aanwezig als Visual Studio op deze pc staat.
-
-
-OPNIEUW BOUWEN / BIJWERKEN
---------------------------
-Start in de projectmap outputs\release opnieuw:
-  powershell -ExecutionPolicy Bypass -File Bouw-SkywardSword.ps1 -Iso "<pad naar je schijf>"
-Een geldige uitgepakte schijf wordt hergebruikt en alleen gewijzigde code wordt opnieuw gecompileerd.
-Je instellingen.toml en je opslag blijven staan.
-
-
-INHOUD VAN DEZE MAP
--------------------
-  Speel.cmd                    starten
-  instellingen.toml            jouw instellingen
-  instellingen.standaard.toml  fabrieksinstellingen
-  VERSIE.txt                   wanneer en waaruit deze map gebouwd is
-  bin\                         SkywardSwordPC.exe (+ .pdb en symbolen voor vastloopverslagen)
-  game\                        de uitgepakte bestanden van je schijf (of hulp\spelmap.txt wijst ernaar)
-  hulp\                        de starter (Speel.ps1)
-  logs\, screenshots\          worden vanzelf aangemaakt
+Read COMMUNITY-TESTING.md in the installer package before reporting issues.
+Your own SOUE01 Wii USA 1.0 game is required. Do not redistribute game files,
+locally generated code, game executables, saves, or copyrighted mod assets.

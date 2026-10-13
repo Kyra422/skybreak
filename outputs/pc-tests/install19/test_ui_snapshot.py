@@ -123,7 +123,10 @@ def main():
         if c.is_file() and base.is_file():
             w, h, bpp, rows = read_png(c)
             run.append(count(rows, bpp, 340, 200, 940, 600, lambda r, g, b: r > 200 and g > 190 and b > 150) > 300
-                       and count(rows, bpp, 320, 150, 960, 650, lambda r, g, b: r > 220 and 150 < g < 200 and b < 110) > 20
+                       # Count antialiased ink in the "Still open" marker;
+                       # requiring >20 fully opaque pixels rejected valid thin glyphs.
+                       and count(rows, bpp, 340, 375, 940, 420,
+                                 lambda r, g, b: r > 160 and 100 < g < 200 and b < 110 and r - g > 40) > 20
                        and c.read_bytes() != base.read_bytes())
     check('U6', len(run) == 2 and all(run), f'"SkyBreak is still running" popup (text + amber list + buttons) drawn in NL and EN: {run}')
     shutil.rmtree(sbx, ignore_errors=True)

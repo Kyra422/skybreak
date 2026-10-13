@@ -1,4 +1,4 @@
-SkyBreak {version} - licentie / licence
+SkyBreak {version} - license
 =======================================
 
 SkyBreak (installer, start program, build scripts and the runtime/translator sources in bron\) is a derivative work

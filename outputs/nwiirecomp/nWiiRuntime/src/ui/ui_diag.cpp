@@ -89,10 +89,10 @@ bool WriteStoredZip(const std::string& path, const std::vector<std::pair<std::st
 
 std::string MakePackage(const Request& r, std::string* err) {
     std::vector<std::pair<std::string, std::string>> e;
-    e.push_back({"systeeminfo.txt", r.system_info});
+    e.push_back({"system-info.txt", r.system_info});
     std::error_code ec;
     if (!r.settings_path.empty() && fs::is_regular_file(U8(r.settings_path), ec))
-        e.push_back({"instellingen.toml", ReadTail(U8(r.settings_path), 1 << 20)});
+        e.push_back({"settings.toml", ReadTail(U8(r.settings_path), 1 << 20)});
     std::vector<fs::path> logs;
     for (fs::directory_iterator it(U8(r.log_dir), ec), end; !ec && it != end; it.increment(ec))
         if (it->is_regular_file(ec) && it->path().extension() == ".log") logs.push_back(it->path());
@@ -104,7 +104,7 @@ std::string MakePackage(const Request& r, std::string* err) {
     for (const fs::path& l : logs) e.push_back({"logs/" + P8(l.filename()), ReadTail(l, 4u << 20)});
     fs::create_directories(U8(r.out_dir), ec);
     const std::string zip =
-        P8(U8(r.out_dir) / U8("SkyBreak-diagnose-" + (r.stamp.empty() ? saves::Stamp() : r.stamp) + ".zip"));
+        P8(U8(r.out_dir) / U8("SkyBreak-diagnostics-" + (r.stamp.empty() ? saves::Stamp() : r.stamp) + ".zip"));
     if (!WriteStoredZip(zip, e, err)) return {};
     return zip;
 }

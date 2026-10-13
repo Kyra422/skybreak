@@ -476,21 +476,6 @@ vec4 dolphin_chan(int chan, vec3 pos, vec3 nrm, vec4 vcol) {
         // The TEV registers remain outside so subsequent stages can read them.
         fs << "    {\n";
 
-        // Rasterized colour (Dolphin tev_ras_table): 5 = alpha bump, 6 = alpha
-        // bump normalized, 7 (GX_COLOR_ZERO / NULL) = all zero incl. alpha.
-        if (stage.colorChan == 0) fs << "    rasColor = vColor0;\n";
-        else if (stage.colorChan == 1) fs << "    rasColor = vColor1;\n";
-        else if (useInd && stage.colorChan == 5) fs << "    rasColor = vec4(float(alphabump) / 255.0);\n";
-        else if (useInd && stage.colorChan == 6)
-            fs << "    rasColor = vec4(float(alphabump | (alphabump >> 5)) / 255.0);\n";
-        else fs << "    rasColor = vec4(0.0);\n";
-        // TEV swap tables (LIGHT7, Dolphin WriteStage): the alpha env (BP 0xC1+2n)
-        // selects the ras swap table (bits 0-1) and the tex swap table (bits 2-3).
-        const uint32_t swapSel = state.bp[0xC1 + 2 * i];
-        const std::string rasSwz = TevSwapSwizzle(state, swapSel & 3);
-        const std::string texSwz = TevSwapSwizzle(state, (swapSel >> 2) & 3);
-        if (stage.colorChan <= 1 && rasSwz != "rgba") fs << "    rasColor = rasColor." << rasSwz << ";\n";
-
         if (useInd) {
             // Dolphin WriteStage indirect op + wrapping (runs for every stage).
             const uint32_t c = IndCmd(state, i);
@@ -499,15 +484,18 @@ vec4 dolphin_chan(int chan, vec3 pos, vec3 nrm, vec4 vcol) {
             const uint32_t sw = (c >> 13) & 7, tw = (c >> 16) & 7, addprev = (c >> 20) & 1;
             const bool hasInd = bt < NumIndStages(state);
             const uint32_t tc = tcOf(stage.texCoord);
-            static const char* const kFmtMask[4] = {"255", "31", "15", "7"};
-            static const char* const kBumpMask[4] = {"248", "224", "240", "248"};
+            // Indirect offsets use the upper format bits; bump alpha uses the
+            // complementary lower bits (ITF_8 takes its upper five bits).
+            // Dolphin PixelShaderGen::WriteStage, indirect format conversion.
+            static const int kFmtShift[4] = {0, 3, 4, 5};
+            static const int kBumpShift[4] = {0, 5, 4, 3};
             static const char* const kComp[4] = {"", "x", "y", "z"};
             fs << "    ivec2 indtevtrans = ivec2(0);\n";
             if (hasInd && bs != 0)
-                fs << "    alphabump = iindtex" << bt << "." << kComp[bs] << " & " << kBumpMask[fmt] << ";\n";
+                fs << "    alphabump = (iindtex" << bt << "." << kComp[bs] << " << " << kBumpShift[fmt] << ") & 248;\n";
             if (hasInd && mtxIndex != 0 && mtxId <= 2) {
                 const int m = 2 * ((int)mtxIndex - 1);
-                fs << "    ivec3 crd = iindtex" << bt << " & ivec3(" << kFmtMask[fmt] << ");\n";
+                fs << "    ivec3 crd = iindtex" << bt << " >> " << kFmtShift[fmt] << ";\n";
                 const char* badd = fmt == 0 ? "-128" : "1";
                 if (bias & 1) fs << "    crd.x += " << badd << ";\n";
                 if (bias & 2) fs << "    crd.y += " << badd << ";\n";
@@ -534,6 +522,21 @@ vec4 dolphin_chan(int chan, vec3 pos, vec3 nrm, vec4 vcol) {
             fs << "    tevcoord = " << (addprev ? "tevcoord + " : "") << "wrappedcoord + indtevtrans;\n";
             fs << "    tevcoord = (tevcoord << 8) >> 8;\n";
         }
+
+        // Rasterized colour (Dolphin tev_ras_table): 5 = alpha bump, 6 = alpha
+        // bump normalized, 7 (GX_COLOR_ZERO / NULL) = all zero incl. alpha.
+        if (stage.colorChan == 0) fs << "    rasColor = vColor0;\n";
+        else if (stage.colorChan == 1) fs << "    rasColor = vColor1;\n";
+        else if (useInd && stage.colorChan == 5) fs << "    rasColor = vec4(float(alphabump) / 255.0);\n";
+        else if (useInd && stage.colorChan == 6)
+            fs << "    rasColor = vec4(float(alphabump | (alphabump >> 5)) / 255.0);\n";
+        else fs << "    rasColor = vec4(0.0);\n";
+        // TEV swap tables (LIGHT7, Dolphin WriteStage): the alpha env (BP 0xC1+2n)
+        // selects the ras swap table (bits 0-1) and the tex swap table (bits 2-3).
+        const uint32_t swapSel = state.bp[0xC1 + 2 * i];
+        const std::string rasSwz = TevSwapSwizzle(state, swapSel & 3);
+        const std::string texSwz = TevSwapSwizzle(state, (swapSel >> 2) & 3);
+        if (stage.colorChan <= 1 && rasSwz != "rgba") fs << "    rasColor = rasColor." << rasSwz << ";\n";
 
         if (stage.texMap != 0xFF && useInd) {
             fs << "    texColor = texture(uTex" << (int)stage.texMap << ", vec2(tevcoord) / (128.0 * uTexDim["

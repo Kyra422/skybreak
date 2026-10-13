@@ -326,13 +326,14 @@ inline std::span<const Desc> All() {
          Kind::Toggle, 0, 0, 0, nullptr, "true", kNone, Apply::Restart, "NWII_SWAP_INTERVAL", Status::Exists,
          "main.cpp (swap interval at start)", L19_REF(vsync), nullptr, 0},
         {"frame_interpolation", Tab::Beeld, Tab::Gameplay, L19_G("Beeldtempo", "Frame pacing"), "graphics", "frame_interpolation",
-         {"60 fps (tussenbeelden)", "60 fps (in-between frames)"},
+         {"60 fps (tussenbeelden)", "60 fps (interpolated, experimental)"},
          {"Het spel loopt op 30 beelden per seconde. Dit tekent tussen elk paar beelden een berekend tussenbeeld: "
           "vloeiend 60 fps. Kost ongeveer 17 ms extra vertraging en dubbel zoveel werk voor de videokaart; bij "
           "camerasprongen en laadschermen wordt het tussenbeeld overgeslagen. Werkt meteen.",
-          "Draws a computed frame between every two game frames: smooth 60 fps. About 17 ms extra latency."},
+          "Adds computed frames for up to 60-fps presentation. Gameplay stays at 30 Hz. Uses more GPU time, "
+          "adds latency and may show artifacts. Busy scenes may run below 60 fps. Applies immediately."},
          Kind::Toggle, 0, 0, 0, nullptr, "false", kNone, Apply::Live, "NWII_FRAME_INTERP", Status::Exists,
-         "gx.cpp / renderer_gl.cpp (every frame)", L19_REF(frame_interpolation), nullptr, 0, L19_G("Zoals Skyward Sword HD", "Like Skyward Sword HD")},
+         "gx.cpp / renderer_gl.cpp (every frame)", L19_REF(frame_interpolation), nullptr, 0, L19_G("Experimenteel", "Experimental")},
         {"interp_2d", Tab::Beeld, kNoTab, L19_G("Beeldtempo", "Frame pacing"), "graphics", "frame_interpolation_2d",
          {"Ook HUD en tekst vloeiend", "Interpolate HUD and text too"},
          {"Bij 60 fps ook de HUD, tekstvakken en menu's tussen twee beelden in tekenen. Uit = die komen uit het "
@@ -485,7 +486,7 @@ inline std::span<const Desc> All() {
                  return {true, false, {"Staat altijd uit in de Wii-indeling (beweging).", "Always off in the Wii layout."}};
              return Locked(c, "NWII_FREECAM");
          },
-         0, L19_G("Zoals Skyward Sword HD", "Like Skyward Sword HD")},
+         0, L19_G("Experimenteel", "Experimental")},
         {"camera_speed", Tab::Besturing, kNoTab, L19_G("Camera", "Camera"), "camera", "speed",
          {"Camerasnelheid", "Camera speed"},
          {"Hoe snel de vrije camera draait bij een volledig ingedrukte stick, in 5 stappen zoals in Skyward Sword HD "
@@ -614,20 +615,20 @@ inline std::span<const Desc> All() {
          L19_REF(gyro_auto_calibrate), nullptr, kAdvanced},
 
         // ================================================================== GAMEPLAY
-        {"a_does_not_dash", Tab::Gameplay, kNoTab, L19_G("Zoals Skyward Sword HD", "Like Skyward Sword HD"), "input", "a_does_not_dash",
+        {"a_does_not_dash", Tab::Gameplay, kNoTab, L19_G("Experimenteel", "Experimental"), "input", "a_does_not_dash",
          {"A laat Link niet sprinten", "A does not sprint"},
          {"Zoals in Skyward Sword HD: sprinten doe je met B (controller) of Shift (toetsenbord), zodat je niet per "
           "ongeluk gaat rennen als je iets wilt oppakken.",
           "Like HD: sprint with B / Shift, so A never makes Link run by accident."},
          Kind::Toggle, 0, 0, 0, nullptr, "true", kNone, Apply::Live, nullptr, Status::ExistsHidden, "CTRL18-INPUT translator",
          L19_REF(a_does_not_dash), nullptr, 0},
-        {"quick_items", Tab::Gameplay, kNoTab, L19_G("Zoals Skyward Sword HD", "Like Skyward Sword HD"), "input", "quick_items",
+        {"quick_items", Tab::Gameplay, kNoTab, L19_G("Experimenteel", "Experimental"), "input", "quick_items",
          {"Snelkeuze voorwerpen (1-8)", "Quick items (1-8)"},
          {"Met de toetsen 1 tot en met 8 kies je direct een vak van het voorwerpenwiel, zonder het wiel te openen.",
           "Keys 1-8 pick an item-wheel slot directly."},
          Kind::Toggle, 0, 0, 0, nullptr, "true", kNone, Apply::Live, nullptr, Status::ExistsHidden, "CTRL18-INPUT KbmTranslator",
          L19_REF(quick_items), nullptr, 0},
-        {"fire_on_release", Tab::Gameplay, kNoTab, L19_G("Zoals Skyward Sword HD", "Like Skyward Sword HD"), "input", "fire_on_release",
+        {"fire_on_release", Tab::Gameplay, kNoTab, L19_G("Experimenteel", "Experimental"), "input", "fire_on_release",
          {"Zwaardslag bij loslaten stick", "Swing on stick release"},
          {"Uit: de slag gaat zodra de stick de rand raakt (zoals HD). Aan: pas als je de stick loslaat, zodat je de "
           "richting nog kunt bijsturen.",

@@ -6,17 +6,25 @@ the runtime, translator, installer, launcher, local achievements, Discord Rich
 Presence and asset mod support. It contains no original game files or generated
 game code.
 
-## Community preview 0.21.1
+## First tester release — 0.22.0 Alpha 1
 
-This version adds guided gyro calibration with a live pointer test and optional
-gravity-relative aiming. Full Wii motion and three-axis puzzles retain physical
-sensor axes. Calibration lasts for the controller connection/session. The
-installer verifies official dependency downloads and installs the mod tools.
+[Download the Windows tester package](https://github.com/Kyra422/skybreak/releases/tag/v0.22.0-alpha.1).
+Extract the entire ZIP and run **SkyBreak-Setup.exe**. The playable game is built
+locally from your own supported disc; no original game files are included.
 
-Gameplay currently runs at 30 Hz. The existing 60-fps presentation uses computed
-in-between frames. **True 144 fps is not implemented.** See
-[the timing investigation](docs/TRUE_144_FPS.md). Physical controller feel, all
-puzzles, cutscenes and late-game equipment are not fully validated.
+This alpha includes English defaults and guides, guided gyro calibration,
+controller layouts, asset mod tools, achievements and Discord Rich Presence.
+Renderer fixes correct indirect-texture format bits, same-stage bump alpha and
+stale GPU-copy reads during interpolation. F8 reports now show the actual build
+version and use English filenames.
+
+**Settings > Graphics > 60 fps (interpolated, experimental)** enables computed
+in-between frames. Gameplay remains at 30 Hz. Native 60/144-fps gameplay is not
+implemented. Performance varies by PC and scene. See
+[the timing investigation](docs/TRUE_144_FPS.md).
+
+Rendering, motion puzzles, cutscenes and later game areas still need community
+testing. Read [known limitations and reporting instructions](docs/COMMUNITY_TESTING.md).
 
 ## Testing and installation
 

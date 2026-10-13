@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Bouwt Skyward Sword PC vanaf je EIGEN schijf (The Legend of Zelda: Skyward Sword, VS 1.00 = SOUE01 revisie 0).
 
@@ -131,11 +131,11 @@ function Voortgang([string]$Status, [int]$A = -1, [int]$B = -1, [string]$Soort =
 # INSTALL19: soort fout voor de foutpagina van Setup (schijf/hulpmiddel/ruimte/bouw/pakket).
 function Fout-Soort($Uitzondering) {
     $m = "$($Uitzondering.Message)"
-    if ($m -match '^SkyBreak draait nog') { return 'draait' }  # REL22
+    if ($m -match '^SkyBreak is still running') { return 'draait' }  # REL22
     $hr = 0; try { $hr = $Uitzondering.HResult } catch { }
     if ($hr -eq -2147024784 -or $hr -eq -2147024857 -or $m -match 'not enough space|disk is full|onvoldoende (schijf)?ruimte') { return 'ruimte' }
     switch ($script:HuidigeStap) {
-        0 { if ($m -match '^Onderdeel van het project') { return 'pakket' } return 'schijf' }
+        0 { if ($m -match '^Project component') { return 'pakket' } return 'schijf' }
         1 { return 'hulpmiddel' }
         2 { return 'schijf' }
         3 { return 'schijf' }
@@ -214,10 +214,10 @@ function Start-Gelogd([string]$Exe, [string[]]$Argumenten, [string]$Log, [string
         if ($voortgang.Count -gt 0 -and $voortgang[0] -match '^\[(\d+)/(\d+)\]') {
             $a = [int]$Matches[1]; $b = [int]$Matches[2]
             $pct = [int](100 * $a / [Math]::Max(1, $b))
-            Write-Progress -Activity $Titel -Status "$a van $b" -PercentComplete $pct
+            Write-Progress -Activity $Titel -Status "$a of $b" -PercentComplete $pct
             $nu = "$a/$b"
             if ($nu -ne $script:LaatsteJson) { Voortgang 'voortgang' $a $b; $script:LaatsteJson = $nu }  # INSTALL19
-            if ($nu -ne $laatste -and ($a % 25 -eq 0 -or $a -eq $b)) { Write-Host "    $Titel`: $a van $b"; $laatste = $nu }
+            if ($nu -ne $laatste -and ($a % 25 -eq 0 -or $a -eq $b)) { Write-Host "    $Titel`: $a of $b"; $laatste = $nu }
         }
     }
     Write-Progress -Activity $Titel -Completed
@@ -235,7 +235,7 @@ function Stap([string]$Naam, [scriptblock]$Werk) {
     $klok.Stop()
     Voortgang 'klaar' -Melding "$opmerking"  # INSTALL19
     [void]$stappen.Add([pscustomobject]@{ Stap = $Naam; Seconden = [Math]::Round($klok.Elapsed.TotalSeconds, 1); Opmerking = "$opmerking" })
-    Write-Host ("   klaar in {0:F0} s {1}" -f $klok.Elapsed.TotalSeconds, $(if ($opmerking) { "($opmerking)" } else { '' }))
+    Write-Host ("   completed in {0:F0} s {1}" -f $klok.Elapsed.TotalSeconds, $(if ($opmerking) { "($opmerking)" } else { '' }))
 }
 
 # REL22: draait SkyBreak uit DEZE map? <Map>\SkyBreak.exe of een exe in <Map>\bin, vergeleken op het volledige pad (een
@@ -267,18 +267,18 @@ function Wacht-Op-Gesloten([string]$Map) {
     while ($true) {
         $draait = Draaiende-SkyBreak $Map
         if ($draait.Count -eq 0) {
-            if ($gemeld) { Write-Host '   SkyBreak is gesloten; het bouwen gaat verder.' -ForegroundColor Green; Voortgang 'verder' }
+            if ($gemeld) { Write-Host '   SkyBreak is closed; the build is continuing.' -ForegroundColor Green; Voortgang 'verder' }
             return
         }
         $tekst = (@($draait) | ForEach-Object { "$($_.Pad) (pid $($_.Id))" }) -join '; '
         if ($tekst -ne $gemeld) {
-            Write-Host "   SkyBreak draait nog: $tekst" -ForegroundColor Yellow
-            Write-Host '   Sluit SkyBreak (het spel en de launcher); het bouwen gaat daarna vanzelf verder. Dit script sluit niets af.' -ForegroundColor Yellow
+            Write-Host "   SkyBreak is still running: $tekst" -ForegroundColor Yellow
+            Write-Host '   Close SkyBreak and its launcher; the build will continue automatically.' -ForegroundColor Yellow
             Voortgang 'wacht' -Melding $tekst
             $gemeld = $tekst
         }
         if ($klok.Elapsed.TotalSeconds -ge $SluitWacht) {
-            Fout "SkyBreak draait nog ($tekst). Sluit SkyBreak en start het bouwen opnieuw: het gaat verder waar het stopte."
+            Fout "SkyBreak is still running ($tekst). Close SkyBreak and restart the build to resume."
         }
         Start-Sleep -Seconds 2
     }
@@ -304,7 +304,7 @@ function Python-Helper([string[]]$Argumenten) {
     if ($laatste.Count -gt 0) { try { $json = $laatste[0] | ConvertFrom-Json } catch { $json = $null } }
     if ($r.Code -ne 0) {
         if ($json -and (Heeft-Eigenschap $json 'melding')) { Fout $json.melding }
-        Fout ("Hulpscript mislukt ($($Argumenten[0])): " + ($r.Uit + $r.Fout).Trim())
+        Fout ("Helper script failed ($($Argumenten[0])): " + ($r.Uit + $r.Fout).Trim())
     }
     return $json
 }
@@ -312,7 +312,7 @@ function Python-Helper([string[]]$Argumenten) {
 function Zoek-Exe([string]$Opgegeven, [string[]]$Namen, [string[]]$Kandidaten) {
     if ($Opgegeven) {
         if (Test-Path -LiteralPath $Opgegeven -PathType Leaf) { return (Volledig-Pad $Opgegeven) }
-        Fout "Opgegeven programma bestaat niet: $Opgegeven"
+        Fout "The specified program does not exist: $Opgegeven"
     }
     foreach ($k in $Kandidaten) { if ($k -and (Test-Path -LiteralPath $k -PathType Leaf)) { return $k } }
     foreach ($n in $Namen) {
@@ -333,65 +333,65 @@ function Zoek-SpelRoot([string]$Map) {
 
 # ------------------------------------------------------------------------------------------ hoofdprogramma
 try {
-    Write-Host 'Skyward Sword PC - bouwen vanaf je eigen schijf' -ForegroundColor Green
-    Write-Host 'De gebouwde map bevat code en gegevens uit JOUW schijf. Alleen voor eigen gebruik: niet delen of uploaden.'
+    Write-Host 'SkyBreak - building from your own disc' -ForegroundColor Green
+    Write-Host 'The built folder contains code and data from YOUR disc. For personal use; do not share or upload it.'
 
     if (-not $Uitvoer) { $Uitvoer = Join-Path $releaseDir 'SkywardSwordPC' }
     if (-not $Werkmap) { $Werkmap = Join-Path $releaseDir 'bouw' }
     $Uitvoer = Volledig-Pad $Uitvoer
     $Werkmap = Volledig-Pad $Werkmap
     $IsoPad = Volledig-Pad $Iso
-    if (-not (Test-Path -LiteralPath $IsoPad)) { Fout "Schijfbestand of map niet gevonden: $IsoPad" }
+    if (-not (Test-Path -LiteralPath $IsoPad)) { Fout "Disc file or folder not found: $IsoPad" }
     $isoIsMap = Test-Path -LiteralPath $IsoPad -PathType Container
     foreach ($nodig in @($runtimeSrc, $profileToml, $symbolsCsv, $sigdb, $helper, $templates, (Join-Path $decompCfgDir 'config.yml'), (Join-Path $nwiiSrc 'CMakeLists.txt'))) {
-        if (-not (Test-Path -LiteralPath $nodig)) { Fout "Onderdeel van het project ontbreekt: $nodig`n       Pak de HELE zip uit en laat de mappen bij elkaar: start Bouw-SkywardSword.cmd in de hoofdmap SkywardSwordPC-bouwpakket (niet een losse kopie van de map release)." }
+        if (-not (Test-Path -LiteralPath $nodig)) { Fout "Project component is missing: $nodig`n       Extract the WHOLE ZIP and keep the folders together. Run SkyBreak-Setup.exe beside the included source folder." }
     }
     if ($Taken -le 0) { $Taken = [Math]::Max(1, [Environment]::ProcessorCount - 2) }
     New-Item -ItemType Directory -Force -Path $Werkmap | Out-Null
     $logMap = Join-Path $Werkmap 'logs'
     New-Item -ItemType Directory -Force -Path $logMap | Out-Null
     $stempel = Get-Date -Format 'yyyyMMdd-HHmmss'
-    Write-Host "Uitvoer:  $Uitvoer"
-    Write-Host "Werkmap:  $Werkmap  (logs in $logMap)"
+    Write-Host "Output:  $Uitvoer"
+    Write-Host "Build folder:  $Werkmap  (logs in $logMap)"
 
     # ---------------------------------------------------------------------------- 1. voorwaarden
-    Stap '1. Hulpprogramma''s controleren' {
+    Stap '1. Checking tools' {
         # Python 3.8+
         $script:PythonExe = Zoek-Exe $Python @('python.exe', 'python3.exe') @((Join-Path $projectRoot 'work\venv\Scripts\python.exe'))
         if (-not $script:PythonExe) {
             $py = Get-Command py.exe -ErrorAction SilentlyContinue
             if ($py) { $r = Start-Direct $py.Source @('-3', '-c', 'import sys;print(sys.executable)'); if ($r.Code -eq 0) { $script:PythonExe = $r.Uit.Trim() } }
         }
-        if (-not $script:PythonExe) { Fout 'Python 3 niet gevonden. Installeer Python 3.10 of nieuwer (python.org) of geef -Python <pad\python.exe>.' }
+        if (-not $script:PythonExe) { Fout 'Python 3 not found. Install Python 3.10 or later (python.org), or use -Python <path\python.exe>.' }
         $r = Start-Direct $script:PythonExe @('-c', 'import sys;print("%d.%d" % sys.version_info[:2]);sys.exit(0 if sys.version_info >= (3,8) else 1)')
-        if ($r.Code -ne 0) { Fout "Python $($r.Uit.Trim()) is te oud ($script:PythonExe). Nodig: 3.8 of nieuwer." }
+        if ($r.Code -ne 0) { Fout "Python $($r.Uit.Trim()) is too old ($script:PythonExe). Python 3.8 or later is required." }
         $pyVersie = $r.Uit.Trim()
 
         # Visual Studio 2022 (of Build Tools) met C++: omgeving van VsDevCmd overnemen
         $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-        if (-not (Test-Path -LiteralPath $vswhere)) { Fout 'Visual Studio 2022 (of de Build Tools) is niet gevonden. Installeer "Desktopontwikkeling met C++" (zie README.md).' }
+        if (-not (Test-Path -LiteralPath $vswhere)) { Fout 'Visual Studio 2022 or Build Tools not found. Install "Desktop development with C++" (see README.txt).' }
         $r = Start-Direct $vswhere @('-latest', '-products', '*', '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', '-property', 'installationPath')
         $vsPad = ($r.Uit -split "`r?`n" | Where-Object { $_ } | Select-Object -First 1)
-        if (-not $vsPad) { Fout 'Visual Studio is gevonden, maar zonder de C++-compiler (MSVC x64). Voeg "Desktopontwikkeling met C++" toe via de Visual Studio Installer.' }
+        if (-not $vsPad) { Fout 'Visual Studio has no C++ compiler (MSVC x64). Add "Desktop development with C++" using Visual Studio Installer.' }
         $vsDev = Join-Path $vsPad 'Common7\Tools\VsDevCmd.bat'
         $r = Start-Direct $env:ComSpec @('/d', '/c', 'call', $vsDev, '-arch=amd64', '-host_arch=amd64', '-no_logo', '>nul', '2>&1', '&&', 'set')
-        if ($r.Code -ne 0) { Fout "VsDevCmd.bat mislukt ($vsDev)." }
+        if ($r.Code -ne 0) { Fout "VsDevCmd.bat failed ($vsDev)." }
         foreach ($l in ($r.Uit -split "`r?`n")) {
             $i = $l.IndexOf('=')
             if ($i -gt 0) { [Environment]::SetEnvironmentVariable($l.Substring(0, $i), $l.Substring($i + 1), 'Process') }
         }
-        if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { Fout 'De MSVC-compiler (cl.exe) is na VsDevCmd niet beschikbaar.' }
+        if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { Fout 'The MSVC compiler (cl.exe) is unavailable after VsDevCmd.' }
 
         # CMake 3.20+ en Ninja (uit Visual Studio, PATH, of een Python-omgeving: py -m pip install cmake ninja)
         $pyScripts = Split-Path -Parent $script:PythonExe
         $vsCMake = Join-Path $vsPad 'Common7\IDE\CommonExtensions\Microsoft\CMake'
         $script:CMakeExe = Zoek-Exe $CMake @('cmake.exe') @((Join-Path $vsCMake 'CMake\bin\cmake.exe'), (Join-Path $projectRoot 'work\venv\Scripts\cmake.exe'), (Join-Path $pyScripts 'cmake.exe'), (Join-Path $pyScripts 'Scripts\cmake.exe'), (Join-Path $env:ProgramFiles 'CMake\bin\cmake.exe'))
-        if (-not $script:CMakeExe) { Fout 'CMake niet gevonden. Installeer het "C++ CMake tools"-onderdeel van Visual Studio, of: py -m pip install cmake ninja. Of geef -CMake <pad>.' }
+        if (-not $script:CMakeExe) { Fout 'CMake not found. Add Visual Studio C++ CMake tools, or run: py -m pip install cmake ninja. Alternatively use -CMake <path>.' }
         $script:NinjaExe = Zoek-Exe $Ninja @('ninja.exe') @((Join-Path $vsCMake 'Ninja\ninja.exe'), (Join-Path $projectRoot 'work\venv\Scripts\ninja.exe'), (Join-Path $pyScripts 'ninja.exe'), (Join-Path $pyScripts 'Scripts\ninja.exe'))
-        if (-not $script:NinjaExe) { Fout 'Ninja niet gevonden. Installeer het "C++ CMake tools"-onderdeel van Visual Studio, of: py -m pip install ninja. Of geef -Ninja <pad>.' }
+        if (-not $script:NinjaExe) { Fout 'Ninja not found. Add Visual Studio C++ CMake tools, or run: py -m pip install ninja. Alternatively use -Ninja <path>.' }
         $r = Start-Direct $script:CMakeExe @('--version')
-        if ($r.Uit -notmatch 'cmake version (\d+)\.(\d+)') { Fout "CMake-versie onbekend ($script:CMakeExe)." }
-        if ([int]$Matches[1] -lt 3 -or ([int]$Matches[1] -eq 3 -and [int]$Matches[2] -lt 20)) { Fout "CMake $($Matches[1]).$($Matches[2]) is te oud; nodig: 3.20 of nieuwer." }
+        if ($r.Uit -notmatch 'cmake version (\d+)\.(\d+)') { Fout "Unknown CMake version ($script:CMakeExe)." }
+        if ([int]$Matches[1] -lt 3 -or ([int]$Matches[1] -eq 3 -and [int]$Matches[2] -lt 20)) { Fout "CMake $($Matches[1]).$($Matches[2]) is too old; CMake 3.20 or later is required." }
         $cmakeVersie = "$($Matches[1]).$($Matches[2])"
 
         # DolphinTool (alleen nodig voor een schijfbestand)
@@ -413,7 +413,7 @@ try {
                     if ($gevonden) { $script:DolphinExe = $gevonden.FullName }
                 }
             }
-            if (-not $script:DolphinExe) { Fout 'DolphinTool.exe niet gevonden. Het hoort bij de Dolphin-emulator (dolphin-emu.org, map Dolphin-x64). Geef het pad met -DolphinTool <pad\DolphinTool.exe>, of pak de schijf zelf uit met Dolphin (rechtsklik > Eigenschappen > Bestandssysteem > Hele schijf uitpakken) en geef die map als -Iso.' }
+            if (-not $script:DolphinExe) { Fout 'DolphinTool.exe not found. It is included with Dolphin (dolphin-emu.org). Use -DolphinTool <path\DolphinTool.exe>, or extract the disc with Dolphin and use that folder as -Iso.' }
         }
 
         # Bibliotheekbronnen (offline) of CMake laat ze ophalen
@@ -421,10 +421,10 @@ try {
         foreach ($k in @($Bronnen, (Join-Path $projectRoot 'work\nwii-build\_deps'))) {
             if ($k -and (Test-Path -LiteralPath (Join-Path $k 'tomlplusplus-src\include')) -and (Test-Path -LiteralPath (Join-Path $k 'sdl2-src\CMakeLists.txt')) -and (Test-Path -LiteralPath (Join-Path $k 'imgui-src\imgui.cpp'))) { $script:BronMap = Volledig-Pad $k; break }
         }
-        if ($Bronnen -and -not $script:BronMap) { Fout "In -Bronnen ($Bronnen) staan geen tomlplusplus-src, sdl2-src en imgui-src." }
+        if ($Bronnen -and -not $script:BronMap) { Fout "In -Bronnen ($Bronnen) does not contain tomlplusplus-src, sdl2-src and imgui-src." }
         if (-not $script:BronMap) {
-            if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) { Fout 'SDL2, toml++ en Dear ImGui zijn niet lokaal aanwezig en git ontbreekt, dus CMake kan ze niet ophalen. Installeer Git for Windows of geef -Bronnen <map>.' }
-            Write-Host '   LET OP: CMake haalt SDL2 (release-2.28.5), toml++ (v3.4.0) en Dear ImGui (v1.91.9b) op van github.com.' -ForegroundColor Yellow
+            if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) { Fout 'SDL2, toml++ and Dear ImGui are missing locally and Git is unavailable. Install Git for Windows or use -Bronnen <folder>.' }
+            Write-Host '   CMake will download SDL2 (release-2.28.5), toml++ (v3.4.0) and Dear ImGui (v1.91.9b) from github.com.' -ForegroundColor Yellow
         }
 
         Write-Host "   Python $pyVersie   : $script:PythonExe"
@@ -432,43 +432,43 @@ try {
         Write-Host "   CMake $cmakeVersie      : $script:CMakeExe"
         Write-Host "   Ninja            : $script:NinjaExe"
         if ($script:DolphinExe) { Write-Host "   DolphinTool      : $script:DolphinExe" }
-        Write-Host "   Bibliotheken     : $(if ($script:BronMap) { $script:BronMap } else { 'via internet (CMake FetchContent)' })"
-        Write-Host "   Compileertaken   : $Taken"
+        Write-Host "   Libraries     : $(if ($script:BronMap) { $script:BronMap } else { 'via internet (CMake FetchContent)' })"
+        Write-Host "   Compile jobs   : $Taken"
         return "Python $pyVersie, CMake $cmakeVersie"
     }
 
     # ---------------------------------------------------------------------------- 2. schijf controleren
-    Stap '2. Schijf controleren' {
+    Stap '2. Checking disc' {
         if ($isoIsMap) {
             $root = Zoek-SpelRoot $IsoPad
-            if (-not $root) { Fout "In $IsoPad staat geen uitgepakte Wii-schijf (sys\main.dol ontbreekt)." }
+            if (-not $root) { Fout "In $IsoPad does not contain an extracted Wii disc (sys\main.dol is missing)." }
             $v = Python-Helper @('verify-game', $root)
             $script:SpelBron = $root
-            return "uitgepakte map, $($v.game_id) rev $($v.revision), main.dol SHA-1 klopt"
+            return "extracted folder, $($v.game_id) rev $($v.revision), main.dol SHA-1 verified"
         }
         $r = Start-Direct $script:DolphinExe @('header', '-i', $IsoPad, '-j')
         $kop = $null
         try { $kop = ($r.Uit.Trim() | ConvertFrom-Json) } catch { }
         if ($r.Code -ne 0 -or -not $kop -or -not (Heeft-Eigenschap $kop 'game_id')) {
-            Fout "Dit bestand is geen leesbare Wii-schijf (DolphinTool herkent het niet): $IsoPad"
+            Fout "This file is not a readable Wii disc (DolphinTool cannot identify it): $IsoPad"
         }
         if (-not (Heeft-Eigenschap $kop 'internal_name')) { $kop | Add-Member -NotePropertyName internal_name -NotePropertyValue '' }
         if (-not (Heeft-Eigenschap $kop 'revision')) { $kop | Add-Member -NotePropertyName revision -NotePropertyValue -1 }
         $id = "$($kop.game_id)"; $rev = [int]$kop.revision
         if ($id -ne $GameId) {
-            $regio = @{ 'P' = 'Europese (PAL)'; 'J' = 'Japanse'; 'K' = 'Koreaanse' }
+            $regio = @{ 'P' = 'European (PAL)'; 'J' = 'Japanese'; 'K' = 'Korean' }
             if ($id.Length -ge 4 -and $id.StartsWith('SOU') -and $regio.ContainsKey($id.Substring(3, 1))) {
-                Fout "Dit is de $($regio[$id.Substring(3, 1)]) versie van Skyward Sword ($id). Alleen de Amerikaanse versie 1.00 (SOUE01, revisie 0) wordt ondersteund."
+                Fout "This is the $($regio[$id.Substring(3, 1)]) version of Skyward Sword ($id). Only USA 1.00 (SOUE01, revision 0) is supported."
             }
-            Fout "Dit is geen Skyward Sword-schijf voor dit project (spelcode $id, '$($kop.internal_name)'). Nodig: SOUE01, revisie 0."
+            Fout "This is not a supported Skyward Sword disc (game ID $id, '$($kop.internal_name)'). Required: SOUE01, revision 0."
         }
-        if ($rev -ne $Revision) { Fout "Dit is SOUE01 revisie $rev. Alleen revisie 0 (versie 1.00) wordt ondersteund." }
+        if ($rev -ne $Revision) { Fout "This is SOUE01 revision $rev. Only revision 0 (version 1.00) is supported." }
         $script:SpelBron = $null
         return "$id rev $rev, '$($kop.internal_name)'"
     }
     if ($AlleenControle) {
         Write-Host ''
-        Write-Host 'Controle geslaagd (-AlleenControle): er is niets uitgepakt of gebouwd.' -ForegroundColor Green
+        Write-Host 'Verification passed (-AlleenControle); nothing was extracted or built.' -ForegroundColor Green
         Voortgang 'einde' -Melding 'controle'  # INSTALL19
         exit 0
     }
@@ -477,20 +477,20 @@ try {
     if ($script:SpelBron -and -not $SpelMap) { $spelDoel = $script:SpelBron }
     elseif ($SpelMap) { $spelDoel = Volledig-Pad $SpelMap }
     else { $spelDoel = Join-Path $Uitvoer 'game' }
-    Stap '3. Spelbestanden uitpakken' {
-        if ($script:SpelBron -and $spelDoel -eq $script:SpelBron) { return 'bestaande map wordt gebruikt, niets gekopieerd' }
+    Stap '3. Extracting game files' {
+        if ($script:SpelBron -and $spelDoel -eq $script:SpelBron) { return 'using existing folder; nothing copied' }
         # Alleen de eigen standaardmap <Uitvoer>\game mag het script leegmaken; een opgegeven -SpelMap nooit.
         $eigenMap = ($spelDoel -eq (Join-Path $Uitvoer 'game'))
         if (Test-Path -LiteralPath (Join-Path $spelDoel 'sys\main.dol')) {
             $r = Start-Direct $script:PythonExe @($helper, 'verify-game', $spelDoel)
-            if ($r.Code -eq 0) { return "al uitgepakt in $spelDoel (gecontroleerd), overgeslagen" }
-            if (-not $eigenMap) { Fout "In -SpelMap $spelDoel staat al een schijf die niet klopt. Kies een lege of nieuwe map." }
-            Write-Host '   De bestaande uitgepakte map klopt niet; opnieuw uitpakken.' -ForegroundColor Yellow
+            if ($r.Code -eq 0) { return "already extracted in $spelDoel (verified); skipped" }
+            if (-not $eigenMap) { Fout "In -SpelMap $spelDoel already contains a different disc. Choose an empty or new folder." }
+            Write-Host '   Existing extracted files failed verification; extracting again.' -ForegroundColor Yellow
             Wacht-Op-Gesloten $Uitvoer  # REL22: niet half leegmaken terwijl het spel eruit leest
             Remove-Item -LiteralPath $spelDoel -Recurse -Force
         } elseif (Test-Path -LiteralPath $spelDoel) {
             if (@(Get-ChildItem -LiteralPath $spelDoel -Force).Count -gt 0) {
-                if (-not $eigenMap) { Fout "-SpelMap $spelDoel is niet leeg. Kies een lege of nieuwe map." }
+                if (-not $eigenMap) { Fout "-SpelMap $spelDoel is not empty. Choose an empty or new folder." }
                 Wacht-Op-Gesloten $Uitvoer  # REL22
                 Remove-Item -LiteralPath $spelDoel -Recurse -Force
             } else {
@@ -501,16 +501,16 @@ try {
         if (Test-Path -LiteralPath $tijdelijk) { Remove-Item -LiteralPath $tijdelijk -Recurse -Force }
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $spelDoel) | Out-Null
         if ($script:SpelBron) {
-            Write-Host "   Kopieren van $script:SpelBron ..."
+            Write-Host "   Copying from $script:SpelBron ..."
             Copy-Item -LiteralPath $script:SpelBron -Destination $tijdelijk -Recurse
             $root = $tijdelijk
         } else {
-            Write-Host '   DolphinTool pakt de DATA-partitie uit (ca. 4 GB, enkele minuten) ...'
+            Write-Host '   DolphinTool is extracting the DATA partition (approximately 4 GB; a few minutes) ...'
             $log = Join-Path $logMap "uitpakken-$stempel.log"
-            $code = Start-Gelogd $script:DolphinExe @('extract', '-i', $IsoPad, '-o', $tijdelijk, '-g', '-q') $log 'Uitpakken'
-            if ($code -ne 0) { Write-Host ((Log-Staart $log 15) -join "`n"); Fout "Uitpakken mislukt (code $code). Zie $log" }
+            $code = Start-Gelogd $script:DolphinExe @('extract', '-i', $IsoPad, '-o', $tijdelijk, '-g', '-q') $log 'Extracting'
+            if ($code -ne 0) { Write-Host ((Log-Staart $log 15) -join "`n"); Fout "Extraction failed (code $code). Zie $log" }
             $root = Zoek-SpelRoot $tijdelijk
-            if (-not $root) { Fout "Na het uitpakken staat er geen sys\main.dol in $tijdelijk." }
+            if (-not $root) { Fout "Extraction produced no sys\main.dol in $tijdelijk." }
         }
         if ($root -ne $tijdelijk) {
             Move-Item -LiteralPath $root -Destination $spelDoel
@@ -519,12 +519,12 @@ try {
             Move-Item -LiteralPath $tijdelijk -Destination $spelDoel
         }
         [void](Python-Helper @('verify-game', $spelDoel))
-        return ('{0} uitgepakt, main.dol en rels.arc gecontroleerd' -f (GB (Map-Grootte $spelDoel)))
+        return ('{0} extracted; main.dol and rels.arc verified' -f (GB (Map-Grootte $spelDoel)))
     }
 
     # ---------------------------------------------------------------------------- 4. REL-modules
     $relMap = Join-Path $Werkmap 'rels-bron'
-    Stap '4. REL-modules uitpakken en controleren' {
+    Stap '4. Extracting and checking REL modules' {
         $v = Python-Helper @('extract-rels', $spelDoel, $relMap, '--decomp-config', (Join-Path $decompCfgDir 'config.yml'))
         return "$($v.modules) modules, $($v.hash_ok) SHA-1 correct"
     }
@@ -543,22 +543,22 @@ try {
         # INSTALL19: met -Bronnen nooit iets ophalen (een ontbrekende bibliotheek faalt dan meteen).
         if ($Bronnen) { $bronArgs += '-DFETCHCONTENT_FULLY_DISCONNECTED=ON' }
     }
-    Stap '5. Vertaler (nWiiRecomp) bouwen' {
+    Stap '5. Building translator (nWiiRecomp)' {
         $log = Join-Path $logMap "vertaler-$stempel.log"
         if (-not (Test-Path -LiteralPath (Join-Path $genBuild 'build.ninja'))) {
-            $code = Start-Gelogd $script:CMakeExe (@('-S', $nwiiSrc, '-B', $genBuild, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', '-DNWII_BUILD_STUDIO=OFF', "-DCMAKE_MAKE_PROGRAM=$(CMake-Pad $script:NinjaExe)") + $bronArgs) $log 'Vertaler configureren'
-            if ($code -ne 0) { Write-Host ((Log-Staart $log 20) -join "`n"); Fout "CMake-configuratie van de vertaler mislukt. Zie $log" }
+            $code = Start-Gelogd $script:CMakeExe (@('-S', $nwiiSrc, '-B', $genBuild, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', '-DNWII_BUILD_STUDIO=OFF', "-DCMAKE_MAKE_PROGRAM=$(CMake-Pad $script:NinjaExe)") + $bronArgs) $log 'Configuring translator'
+            if ($code -ne 0) { Write-Host ((Log-Staart $log 20) -join "`n"); Fout "Translator CMake configuration failed. See $log" }
         }
-        $code = Start-Gelogd $script:CMakeExe @('--build', $genBuild, '--target', 'nwiirecomp', '-j', "$Taken") $log 'Vertaler bouwen'
-        if ($code -ne 0 -or -not (Test-Path -LiteralPath $genExe)) { Write-Host ((Log-Staart $log 20) -join "`n"); Fout "Bouwen van de vertaler mislukt. Zie $log" }
-        return 'nwiirecomp.exe gebouwd'
+        $code = Start-Gelogd $script:CMakeExe @('--build', $genBuild, '--target', 'nwiirecomp', '-j', "$Taken") $log 'Building translator'
+        if ($code -ne 0 -or -not (Test-Path -LiteralPath $genExe)) { Write-Host ((Log-Staart $log 20) -join "`n"); Fout "Translator build failed. See $log" }
+        return 'nwiirecomp.exe built'
     }
 
     # ---------------------------------------------------------------------------- 6. code genereren
     $exportNieuw = Join-Path $Werkmap 'export-nieuw'
     $export = Join-Path $Werkmap 'export'
     $genConfig = Join-Path $Werkmap 'recomp_config.toml'
-    Stap '6. main.dol en REL-modules vertalen naar C++' {
+    Stap '6. Translating main.dol and REL modules to C++' {
         [void](Python-Helper @('make-recomp-config', '--profile', $profileToml, '--out', $genConfig, '--game', $spelDoel,
                 '--export', $exportNieuw, '--runtime', $runtimeSrc, '--sigdb', $sigdb, '--symbols-csv', $symbolsCsv,
                 '--rel-dir', $relMap, '--rel-symbols-dir', (Join-Path $decompCfgDir 'rels')))
@@ -568,23 +568,23 @@ try {
         $r = Start-Direct $genExe @($genConfig) $Werkmap
         Set-Content -LiteralPath $log -Value ($r.Uit + $r.Fout) -Encoding UTF8
         if ($r.Code -ne 0 -or $r.Uit -notmatch 'Successfully exported' -or -not (Test-Path -LiteralPath (Join-Path $exportNieuw 'functions.h'))) {
-            Write-Host ((Log-Staart $log 20) -join "`n"); Fout "Vertalen van main.dol mislukt. Zie $log"
+            Write-Host ((Log-Staart $log 20) -join "`n"); Fout "main.dol translation failed. See $log"
         }
         $r = Start-Direct $genExe @($genConfig, '--rels') $Werkmap
         Add-Content -LiteralPath $log -Value ($r.Uit + $r.Fout) -Encoding UTF8
         if ($r.Code -ne 0 -or -not (Test-Path -LiteralPath (Join-Path $exportNieuw 'rels\rel_aot_table.cpp'))) {
-            Write-Host ((Log-Staart $log 20) -join "`n"); Fout "Vertalen van de REL-modules mislukt. Zie $log"
+            Write-Host ((Log-Staart $log 20) -join "`n"); Fout "REL translation failed. See $log"
         }
         $relRegel = ($r.Uit -split "`r?`n" | Where-Object { $_ -match '\[RELAOT\] generated' } | Select-Object -First 1)
         $s = Python-Helper @('sync-tree', $exportNieuw, $export)
         $n = @(Get-ChildItem -LiteralPath $export -Filter 'output_*.cpp' -File).Count
-        return ("{0} DOL-bestanden; {1}; {2} gewijzigd, {3} ongewijzigd" -f $n, ($relRegel -replace '^\[RELAOT\] generated ', '' -replace ',.*$', ''), $s.copied, $s.unchanged)
+        return ("{0} DOL files; {1}; {2} changed, {3} unchanged" -f $n, ($relRegel -replace '^\[RELAOT\] generated ', '' -replace ',.*$', ''), $s.copied, $s.unchanged)
     }
 
     # ---------------------------------------------------------------------------- 7. spel bouwen
     $gameBuild = Join-Path $Werkmap 'build'
     $gameExe = Join-Path $gameBuild 'bin\SkywardSwordPC.exe'
-    Stap '7. SkywardSwordPC.exe bouwen (MSVC, kan 15-30 min duren)' {
+    Stap '7. Building the game (MSVC; may take 15–30 minutes)' {
         $log = Join-Path $logMap "bouwen-$stempel.log"
         $cfgArgs = @('-S', $export, '-B', $gameBuild, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', "-DCMAKE_MAKE_PROGRAM=$(CMake-Pad $script:NinjaExe)",
             "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=$(CMake-Pad (Join-Path $gameBuild 'bin'))",
@@ -596,17 +596,17 @@ try {
         if ((Test-Path -LiteralPath (Join-Path $brandingMap 'skybreak.ico')) -and (Test-Path -LiteralPath (Join-Path $brandingMap 'skybreak-logo-512.png'))) {
             $cfgArgs += "-DSKYBREAK_BRANDING_DIR=$(CMake-Pad $brandingMap)"
         }
-        $code = Start-Gelogd $script:CMakeExe $cfgArgs $log 'Spel configureren'
-        if ($code -ne 0) { Write-Host ((Log-Staart $log 20) -join "`n"); Fout "CMake-configuratie van het spel mislukt. Zie $log" }
-        $code = Start-Gelogd $script:CMakeExe @('--build', $gameBuild, '--target', 'SkywardSwordPC', '-j', "$Taken") $log 'Spel bouwen'
+        $code = Start-Gelogd $script:CMakeExe $cfgArgs $log 'Configuring game'
+        if ($code -ne 0) { Write-Host ((Log-Staart $log 20) -join "`n"); Fout "Game CMake configuration failed. See $log" }
+        $code = Start-Gelogd $script:CMakeExe @('--build', $gameBuild, '--target', 'SkywardSwordPC', '-j', "$Taken") $log 'Building game'
         if ($code -ne 0 -or -not (Test-Path -LiteralPath $gameExe)) {
-            Write-Host ((Log-Staart $log 25) -join "`n"); Fout "Bouwen van het spel mislukt. Zie $log"
+            Write-Host ((Log-Staart $log 25) -join "`n"); Fout "Game build failed. See $log"
         }
         return ('exe {0:N0} MB' -f ((Get-Item -LiteralPath $gameExe).Length / 1MB))
     }
 
     # ---------------------------------------------------------------------------- 8. map samenstellen
-    Stap '8. Map SkywardSwordPC samenstellen' {
+    Stap '8. Assembling SkyBreak folder' {
         $bin = Join-Path $Uitvoer 'bin'
         $hulp = Join-Path $Uitvoer 'hulp'
         New-Item -ItemType Directory -Force -Path $bin, $hulp | Out-Null
@@ -624,6 +624,8 @@ try {
         if (Test-Path -LiteralPath $freezeSymbols) { Copy-Item -LiteralPath $freezeSymbols -Destination $bin -Force }
         Copy-Item -LiteralPath (Join-Path $templates 'Speel.cmd') -Destination $Uitvoer -Force
         Copy-Item -LiteralPath (Join-Path $templates 'LEESMIJ.txt') -Destination $Uitvoer -Force
+        Copy-Item -LiteralPath (Join-Path $templates 'LEESMIJ.txt') -Destination (Join-Path $Uitvoer 'README.txt') -Force
+        Copy-Item -LiteralPath (Join-Path $templates 'Speel.cmd') -Destination (Join-Path $Uitvoer 'Play.cmd') -Force
         Copy-Item -LiteralPath (Join-Path $templates 'Speel.ps1') -Destination $hulp -Force
         # INSTALL19: Speel.ps1 leest een afwijkende exe-naam uit hulp\exenaam.txt
         $naamBestand = Join-Path $hulp 'exenaam.txt'
@@ -671,10 +673,10 @@ try {
             $g = $null
             if ($regel.Count -gt 0) { try { $g = $regel[0] | ConvertFrom-Json } catch { $g = $null } }
             if ($r.Code -eq 0 -and $g -and (Heeft-Eigenschap $g 'status')) {
-                if ($g.status -eq 'actueel') { $glyphNoot = '; knopiconen actueel' } else { $glyphNoot = "; knopiconen gemaakt ($($g.pictures))" }
+                if ($g.status -eq 'actueel') { $glyphNoot = '; button icons up to date' } else { $glyphNoot = "; button icons generated ($($g.pictures))" }
             } else {
-                $glyphNoot = '; knopiconen NIET gemaakt (het spel toont de Wii-knoppen)'
-                Write-Host ('   Waarschuwing: knopiconen niet gemaakt: ' + ($r.Uit + $r.Fout).Trim()) -ForegroundColor Yellow
+                $glyphNoot = '; button icons NOT generated (Wii prompts will be shown)'
+                Write-Host ('   Warning: button icons were not generated: ' + ($r.Uit + $r.Fout).Trim()) -ForegroundColor Yellow
             }
         }
 
@@ -690,22 +692,22 @@ try {
         }
         $productNaam = if ($Product) { $Product } else { 'Skyward Sword PC' }  # INSTALL19: -Product
         $versie = @(
-            "$productNaam - lokaal gebouwd op $(Get-Date -Format 'yyyy-MM-dd HH:mm') door Bouw-SkywardSword.ps1",
-            "Schijf: $GameId revisie $Revision, main.dol SHA-1 $MainDolSha1",
-            "Bron: $(Split-Path -Leaf $IsoPad)",
-            "Spelbestanden: $(if ($spelDoel.StartsWith($Uitvoer + [IO.Path]::DirectorySeparatorChar)) { $spelDoel.Substring($Uitvoer.Length + 1) } else { $spelDoel })",
+            "$productNaam - built locally on $(Get-Date -Format 'yyyy-MM-dd HH:mm') by Bouw-SkywardSword.ps1",
+            "Disc: $GameId revision $Revision, main.dol SHA-1 $MainDolSha1",
+            "Source: $(Split-Path -Leaf $IsoPad)",
+            "Game files: $(if ($spelDoel.StartsWith($Uitvoer + [IO.Path]::DirectorySeparatorChar)) { $spelDoel.Substring($Uitvoer.Length + 1) } else { $spelDoel })",
             "$ExeNaam.exe SHA-256: $exeHash",
-            "Opslag (NAND): $nandRoot",
+            "Saves (NAND): $nandRoot",
             '',
-            'Deze map bevat code en gegevens die uit jouw eigen schijf zijn gemaakt. Alleen voor eigen gebruik; niet delen.'
+            'This folder contains code and data generated from your own disc. For personal use; do not distribute.'
         )
         Set-Content -LiteralPath (Join-Path $Uitvoer 'VERSIE.txt') -Value $versie -Encoding UTF8
-        if ($nieuw) { return ('instellingen.toml aangemaakt' + $glyphNoot) }
-        return ('bestaande instellingen.toml behouden (fabrieksinstellingen: instellingen.standaard.toml)' + $glyphNoot)
+        if ($nieuw) { return ('instellingen.toml created' + $glyphNoot) }
+        return ('existing instellingen.toml preserved (factory defaults: instellingen.standaard.toml)' + $glyphNoot)
     }
 
     if ($Opruimen) {
-        Stap '9. Werkmap opruimen' { Remove-Item -LiteralPath $Werkmap -Recurse -Force; return $Werkmap }
+        Stap '9. Cleaning build folder' { Remove-Item -LiteralPath $Werkmap -Recurse -Force; return $Werkmap }
     }
 
     # ---------------------------------------------------------------------------- samenvatting
@@ -714,14 +716,14 @@ try {
     $grootteSpel = if ($spelDoel.StartsWith($Uitvoer + '\')) { 0 } else { Map-Grootte $spelDoel }
     $grootteWerk = Map-Grootte $Werkmap
     Write-Host ''
-    Write-Host 'Klaar!' -ForegroundColor Green
+    Write-Host 'Done!' -ForegroundColor Green
     $stappen | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
-    Write-Host ("Totale tijd: {0:N1} min" -f $totaalKlok.Elapsed.TotalMinutes)
+    Write-Host ("Total time: {0:N1} min" -f $totaalKlok.Elapsed.TotalMinutes)
     Write-Host ("Map {0}: {1}" -f $Uitvoer, (GB $grootteUitvoer))
-    if ($grootteSpel -gt 0) { Write-Host ("Spelbestanden {0}: {1}" -f $spelDoel, (GB $grootteSpel)) }
-    if (Test-Path -LiteralPath $Werkmap) { Write-Host ("Werkmap {0}: {1} (mag weg; dan duurt de volgende bouw langer)" -f $Werkmap, (GB $grootteWerk)) }
+    if ($grootteSpel -gt 0) { Write-Host ("Game files {0}: {1}" -f $spelDoel, (GB $grootteSpel)) }
+    if (Test-Path -LiteralPath $Werkmap) { Write-Host ("Build folder {0}: {1} (can be removed; the next build will take longer)" -f $Werkmap, (GB $grootteWerk)) }
     Write-Host ''
-    Write-Host "Spelen: dubbelklik $(Join-Path $Uitvoer 'Speel.cmd')  (uitleg in LEESMIJ.txt)" -ForegroundColor Green
+    Write-Host "To play: double-click $(Join-Path $Uitvoer 'Play.cmd') (see README.txt)" -ForegroundColor Green
     $samenvatting = [pscustomobject]@{ uitvoer = $Uitvoer; spelbestanden = $spelDoel; werkmap = $Werkmap; minuten = [Math]::Round($totaalKlok.Elapsed.TotalMinutes, 2)
         bytes_uitvoer = $grootteUitvoer; bytes_spel_buiten_uitvoer = $grootteSpel; bytes_werkmap = $grootteWerk; stappen = $stappen }
     $samenvatting | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $logMap "samenvatting-$stempel.json") -Encoding UTF8
@@ -731,9 +733,9 @@ try {
 catch {
     Write-Progress -Activity 'Bouwen' -Completed
     Write-Host ''
-    Write-Host ('FOUT: ' + $_.Exception.Message) -ForegroundColor Red
+    Write-Host ('ERROR: ' + $_.Exception.Message) -ForegroundColor Red
     Voortgang 'fout' -Soort (Fout-Soort $_.Exception) -Melding $_.Exception.Message  # INSTALL19
     if ($_.Exception.GetType().FullName -ne 'System.Exception' -and $_.InvocationInfo) { Write-Host $_.InvocationInfo.PositionMessage -ForegroundColor DarkGray }
-    if ($stappen.Count -gt 0) { Write-Host ('Gelukt tot en met: ' + $stappen[$stappen.Count - 1].Stap) }
+    if ($stappen.Count -gt 0) { Write-Host ('Completed through: ' + $stappen[$stappen.Count - 1].Stap) }
     exit 1
 }

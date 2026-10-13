@@ -20,6 +20,7 @@
 #include "engine.h"
 #include "headless.h"
 #include "imgui.h"
+#include "imgui_internal.h" // isolated offscreen snapshot popup state
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include "setup_theme.h"
@@ -262,12 +263,15 @@ int RunSnapshots(sb::Engine& e, HWND hwnd, const sb::fs::path& dir) {
     for (const char* lang : {"nl", "en"}) {
         for (int p = 0; p <= sb::App::kPageCount + 1; ++p) { // extra images: the consent page over Benodigdheden, REL22: the
                                                                 // "SkyBreak is still running" popup over Overzicht
+            if (ImGui::GetCurrentContext()->OpenPopupStack.Size > 0)
+                ImGui::ClosePopupToLevel(0, false);
+            ImGui::GetCurrentContext()->DimBgRatio = 0.0f;
             e.SetLang(lang);
             sb::App app(e, fonts, logo, lw, lh);
             if (p < sb::App::kPageCount) app.SnapshotState(sb::App::Page(p));
             else if (p == sb::App::kPageCount) app.SnapshotConsent("python");
             else app.SnapshotRunning();
-            for (int frame = 0; frame < 4; ++frame) {
+            for (int frame = 0; frame < 24; ++frame) {
                 ImGui_ImplDX11_NewFrame();
                 ImGui_ImplWin32_NewFrame();
                 ImGuiIO& io = ImGui::GetIO();
@@ -309,7 +313,7 @@ int RunSnapshots(sb::Engine& e, HWND hwnd, const sb::fs::path& dir) {
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
-    return written == 2 * (sb::App::kPageCount + 1) ? 0 : 1;
+    return written == 2 * (sb::App::kPageCount + 2) ? 0 : 1;
 }
 
 // Uninstall from <install>\setup: continue from a temp copy so the install folder can be deleted.
@@ -373,7 +377,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int) {
 
     HANDLE mutex = CreateMutexW(nullptr, TRUE, o.ui_snapshot.empty() && !o.headless ? L"Local\\SkyBreakSetup" : nullptr);
     if (o.ui_snapshot.empty() && !o.headless && GetLastError() == ERROR_ALREADY_EXISTS) {
-        MessageBoxW(nullptr, L"SkyBreak-Setup draait al.", L"SkyBreak", MB_ICONINFORMATION);
+        MessageBoxW(nullptr, L"SkyBreak-Setup is already running.", L"SkyBreak", MB_ICONINFORMATION);
         return 1;
     }
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);

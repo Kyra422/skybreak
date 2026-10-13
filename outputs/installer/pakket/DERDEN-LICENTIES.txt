@@ -1,4 +1,4 @@
-SkyBreak {version} - componenten van derden / third-party components
+SkyBreak {version} - third-party components
 ===================================================================
 
 Everything in this package is either SkyBreak/NWiiRecomp code (see LICENTIE.txt) or one of the open components below.
@@ -37,7 +37,7 @@ Each keeps its own licence; the full texts are inside bron\ at the paths given.
    They are fitted to the button pictures of the player's OWN disc on the player's PC (glyph_local.py, build step 8); the
    result in <install>\textures\glyphs belongs to that installation and is not part of this package.
 
-Not included, downloaded only with the player's consent from the official sources (see Setup > Benodigdheden):
+Not included, downloaded only with the player's consent from the official sources (see Setup > Prerequisites):
 - Visual Studio 2022 Build Tools (Microsoft licence terms),
 - Python (PSF licence),
 - Dolphin / DolphinTool (GPL-2.0-or-later).

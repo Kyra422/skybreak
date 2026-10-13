@@ -198,8 +198,8 @@ bool App::PickFile(fs::path& out, bool folder) {
     dlg->GetOptions(&flags);
     dlg->SetOptions(flags | FOS_FORCEFILESYSTEM | (folder ? FOS_PICKFOLDERS : FOS_FILEMUSTEXIST));
     if (!folder) {
-        COMDLG_FILTERSPEC spec[] = {{L"Wii-schijf (*.iso, *.wbfs, *.rvz, *.wia, *.gcz, *.ciso)", L"*.iso;*.wbfs;*.rvz;*.wia;*.gcz;*.ciso"},
-                                    {L"Alle bestanden", L"*.*"}};
+        COMDLG_FILTERSPEC spec[] = {{L"Wii disc (*.iso, *.wbfs, *.rvz, *.wia, *.gcz, *.ciso)", L"*.iso;*.wbfs;*.rvz;*.wia;*.gcz;*.ciso"},
+                                    {L"All files", L"*.*"}};
         dlg->SetFileTypes(2, spec);
     }
     bool ok = false;
@@ -422,28 +422,28 @@ void App::PageWelcome() {
                                "Als bestand (.iso, .wbfs, .rvz, .wia, .gcz) of als uitgepakte map.\n"
                                "- De map die Setup bouwt bevat code en gegevens uit jouw schijf. Alleen voor eigen gebruik: niet delen of uploaden.\n"
                                "- SkyBreak is een fanproject en geen officieel Nintendo-product. Niet-commercieel.\n"
-                               "- Gebaseerd op NWiiRecomp door Volodymyr Vovchok (BlackLine Interactive); licentie in LICENTIE.txt. "
-                               "Andere onderdelen: zie DERDEN-LICENTIES.txt.",
+                               "- Gebaseerd op NWiiRecomp door Volodymyr Vovchok (BlackLine Interactive); licentie in LICENSE.txt. "
+                               "Andere onderdelen: zie THIRD-PARTY-NOTICES.txt.",
                                "- You need your own disc: The Legend of Zelda: Skyward Sword, American version 1.00 (SOUE01). "
                                "As a file (.iso, .wbfs, .rvz, .wia, .gcz) or as an extracted folder.\n"
                                "- The folder Setup builds contains code and data from your disc. For your own use only: do not share or upload it.\n"
                                "- SkyBreak is a fan project and not an official Nintendo product. Non-commercial.\n"
-                               "- Based on NWiiRecomp by Volodymyr Vovchok (BlackLine Interactive); licence in LICENTIE.txt. "
-                               "Other components: see DERDEN-LICENTIES.txt.").c_str());
+                               "- Based on NWiiRecomp by Volodymyr Vovchok (BlackLine Interactive); licence in LICENSE.txt. "
+                               "Other components: see THIRD-PARTY-NOTICES.txt.").c_str());
     ImGui::EndChild();
-    Describe(T("De voorwaarden in het kort. De volledige teksten staan in LICENTIE.txt en DERDEN-LICENTIES.txt naast Setup.",
-               "The terms in short. The full texts are in LICENTIE.txt and DERDEN-LICENTIES.txt next to Setup."));
+    Describe(T("De voorwaarden in het kort. De volledige teksten staan in LICENSE.txt en THIRD-PARTY-NOTICES.txt naast Setup.",
+               "The terms in short. The full texts are in LICENSE.txt and THIRD-PARTY-NOTICES.txt next to Setup."));
     ImGui::Spacing();
     ImGui::Checkbox(T("Ik gebruik een dump van mijn eigen exemplaar (VS, versie 1.00)", "I use a dump of my own copy (USA, version 1.00)").c_str(), &c_.accepted);
     Describe(T("Verplicht. Setup bouwt alleen uit een schijf die je zelf bezit.", "Required. Setup only builds from a disc you own."));
     ImGui::TextUnformatted(T("Taal:", "Language:").c_str());
     ImGui::SameLine();
     bool nl = e_.Lang() != "en";
-    if (ImGui::RadioButton("Nederlands", nl)) { e_.SetLang("nl"); c_.lang = "nl"; }
-    Describe("Taal van Setup / Setup language.");
+    if (ImGui::RadioButton("Dutch", nl)) { e_.SetLang("nl"); c_.lang = "nl"; }
+    Describe("Setup language.");
     ImGui::SameLine();
     if (ImGui::RadioButton("English", !nl)) { e_.SetLang("en"); c_.lang = "en"; }
-    Describe("Taal van Setup / Setup language.");
+    Describe("Setup language.");
 
     const Json& ex = e_.Existing();
     if (ex.is_object()) {

@@ -1,51 +1,44 @@
-# Community preview 0.21.1
+# SkyBreak 0.22.0 Alpha 1 — community testing
 
-Gebruik je eigen Skyward Sword Wii USA 1.0 (SOUE01). Pak het volledige pakket uit
-en start SkyBreak-Setup.exe. De eerste bouw kan lang duren en kan Visual Studio
-Build Tools nodig hebben. Setup vraagt toestemming voordat het benodigdheden
-installeert. Annuleren en later hervatten kan. Bij een update: sla op en sluit
-SkyBreak eerst af; Setup wacht en sluit het spel niet voor je af.
+Use your own **Skyward Sword Wii USA 1.0 (SOUE01, revision 0)**. Extract the
+whole archive and run `SkyBreak-Setup.exe`. Setup checks tools and requests
+consent before installing missing prerequisites. Cancel/resume is supported.
+Save and close SkyBreak before updating; Setup waits for the game to close.
 
-Controleer bij de eerste start je besturingsindeling. Met een DualSense:
-Instellingen > Besturing > Gyro kalibreren. Leg de controller op een stabiele
-ondergrond, meet twee seconden stilstand, pas de correctie toe en test de wijzer.
-De kalibratie geldt voor deze verbinding/sessie. Na opnieuw aansluiten of
-herstarten opnieuw meten. Zonder fysieke gyro zijn sensormetingen niet nodig.
+## First session
 
-Test eerst zonder mods. Kies daarna hoogstens één volledige Link-modelmod;
-wijzigingen vereisen herstarten. ObjectPack-mods worden niet samengevoegd.
-Compatible Wii-mods werken rechtstreeks; sommige HD BRRES+XTX-modelmods kunnen
-eerst lokaal worden geconverteerd. Switch-codepatches werken niet automatisch.
+1. Start with factory settings and no mods. Confirm saving and reloading work.
+2. Choose your layout in **Settings > Controls**. Test aiming, menus and sword
+   movement with your usual input device.
+3. For DualSense gyro, open **Calibrate gyro**, rest the pad on a stable surface,
+   collect two seconds of still data, apply and test the pointer. Calibration
+   is specific to the current connection/session. Recalibrate after restarting
+   or reconnecting. Keyboard/mouse and pads without gyro use virtual motion.
+4. Try **Settings > Graphics > 60 fps (interpolated, experimental)**. Compare
+   both settings when reporting glitches. Computed frames smooth presentation;
+   game logic remains at 30 Hz. Native 60/144-fps gameplay is not implemented.
+5. Test one complete Link model mod at a time, then restart. Compatible Wii
+   assets work directly; selected HD BRRES+XTX assets need local conversion.
+   ObjectPack replacements are not merged. Switch code patches are unsupported.
 
-Echte gameplay draait momenteel op 30 Hz. De bestaande 60-fps-weergave gebruikt
-berekende tussenbeelden. **Echte 144 fps is niet geïmplementeerd.** Dit pakket
-belooft geen vaste fps in alle scènes. Fysiek gyrogevoel, alle puzzels, cutscenes
-en late uitrusting zijn niet volledig getest.
+## Known limitations
 
-Bij een bug: noteer versie, besturing, mods en stappen om het te herhalen. Druk
-F8 voor een lokaal rapport met schermafbeelding en scène. Bekijk dit eerst en
-verwijder persoonlijke gegevens voordat je het deelt. Upload geen gamebestand,
-save, geheugendump of gebouwde game-exe. Deel nooit de gebouwde installatiemap.
+This is an alpha, not a validated full playthrough. Rendering artifacts, blur
+and bright lava in Eldin/Earth Temple are under investigation. Interpolation
+can show artifacts during effects, camera changes or text transitions, and
+can fall back to a lower frame rate in busy scenes. Physical controller feel,
+all motion puzzles, cutscenes and late-game equipment are not fully validated.
 
-## English
+## Reporting a bug
 
-Use your own SOUE01 Wii USA 1.0 game. Extract the entire archive and run
-SkyBreak-Setup.exe. The initial build may take time and require Visual Studio
-Build Tools; dependency installation requires consent. Cancel/resume is supported.
-Save and close SkyBreak before updating. Setup waits; it does not kill your game.
+Press **F8 while the issue is visible**. The local `reports` folder contains
+`screenshot.png`, `context.txt` and a diagnostic ZIP with settings and recent
+logs. Fill in the description, then report it on
+[GitHub Issues](https://github.com/Kyra422/skybreak/issues) or the project Discord.
+Include version, Windows/GPU, input device/layout, enabled mods, interpolation
+and HD texture settings, exact route and steps, and whether it repeats.
+For a flickering issue, attach a short video as well as a still image.
 
-Choose your control layout. With a DualSense, open Settings > Controls >
-Calibrate gyro. Put it on a stable surface, collect two seconds of still data,
-apply the correction and test the pointer. Calibration is connection/session
-specific. Recalibrate after reconnecting or restarting. Pads without gyro and
-keyboard/mouse use virtual controls and do not need sensor calibration.
-
-Test without mods first, then enable at most one complete Link model mod and
-restart. Wii-compatible assets are supported; selected HD BRRES+XTX assets need
-local conversion. Switch code patches are unsupported. Gameplay is currently
-30 Hz; 60-fps presentation uses computed in-between frames. True 144 fps is not
-implemented, and a constant frame rate in all scenes is not promised.
-
-For bugs, include version, input device/layout, active mods and reproduction
-steps. F8 creates a local image/scene report: review it before sharing. Do not
-upload original game data, saves, memory dumps or the locally built executable.
+Review files for personal paths before sharing. Do not upload original game
+files, saves, memory captures, copyrighted mod assets or the locally built
+game executable. Keep a backup of your own save folder before testing.

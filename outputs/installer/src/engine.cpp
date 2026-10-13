@@ -11,19 +11,19 @@
 
 namespace sb {
 
-std::string DefaultLang() { return PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_DUTCH ? "nl" : "en"; }
+std::string DefaultLang() { return "en"; }
 
 namespace {
 // Top-level entries of the install folder that Setup or the build script create (uninstall removes exactly these).
 const char* kCreated[] = {"SkyBreak.exe", "skybreak.ico", "bin", "bron", "bouw", "hulp", "hulpmiddelen", "logs", "setup",
                           "instellingen.toml", "instellingen.standaard.toml", "LEESMIJ.txt", "VERSIE.txt", "Speel.cmd",
-                          "textures/glyphs"}; // REL22: button icons made by the build script (step 8) from the player's disc
+                          "textures/glyphs", "README.txt", "Play.cmd"}; // REL22: button icons made by the build script (step 8) from the player's disc
 
 bool CopyFileAlways(const fs::path& from, const fs::path& to, std::string* err) {
     std::error_code ec;
     fs::create_directories(to.parent_path(), ec);
     if (!CopyFileW(from.c_str(), to.c_str(), FALSE)) {
-        if (err) *err = Format("kopieren mislukt: %s -> %s (%lu)", U(from).c_str(), U(to).c_str(), GetLastError());
+        if (err) *err = Format("copy failed: %s -> %s (%lu)", U(from).c_str(), U(to).c_str(), GetLastError());
         return false;
     }
     return true;
@@ -99,11 +99,11 @@ bool Engine::VerifyPackage(std::vector<std::string>* bad, std::string* err) {
         std::string got = Sha256File(f);
         if (got != want) {
             ++wrong;
-            if (bad) bad->push_back(rel + (got.empty() ? " (ontbreekt)" : " (gewijzigd)"));
+            if (bad) bad->push_back(rel + (got.empty() ? " (missing)" : " (changed)"));
         }
     }
     if (n == 0) {
-        if (err) *err = "MANIFEST.sha256 is leeg";
+        if (err) *err = "MANIFEST.sha256 is empty";
         return false;
     }
     if (wrong) {
@@ -359,7 +359,7 @@ bool Engine::SyncSources(const fs::path& install_dir, std::string* err, int* cop
         ++c;
     }
     if (ec) {
-        if (err) *err = "bron lezen mislukt: " + ec.message();
+        if (err) *err = "Could not read source folder: " + ec.message();
         return false;
     }
     // remove files that the new package no longer has (stale sources)
@@ -389,7 +389,7 @@ bool Engine::MigrateOldSaves(const Choices& c, std::string* msg) {
     fs::create_directories(to, ec);
     fs::copy(OldSavesDir(), to, fs::copy_options::recursive | fs::copy_options::skip_existing, ec);
     if (ec) {
-        if (msg) *msg = "saves kopieren mislukt: " + ec.message();
+        if (msg) *msg = "saves copy failed: " + ec.message();
         return false;
     }
     if (msg) *msg = tr("Oude saves gekopieerd; de oude map blijft als reservekopie staan.", "Old saves copied; the old folder stays as a backup.");

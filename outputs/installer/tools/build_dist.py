@@ -162,15 +162,17 @@ def main():
 
     pk = INSTALLER / 'pakket'
     kw = dict(version=version, setup_sha256=setup_sha)
-    write_crlf(stage / 'LEESMIJ.txt', fill((pk / 'LEESMIJ.txt').read_text(encoding='utf-8'), **kw))
-    write_crlf(stage / 'README-EN.txt', fill((pk / 'README-EN.txt').read_text(encoding='utf-8'), **kw))
-    shutil.copy2(pk/'COMMUNITY-TESTEN.md',stage/'COMMUNITY-TESTEN.md')
+    write_crlf(stage / 'README.txt', fill((pk / 'LEESMIJ.txt').read_text(encoding='utf-8'), **kw))
+
+    shutil.copy2(pk/'COMMUNITY-TESTEN.md',stage/'COMMUNITY-TESTING.md')
     lic = fill((pk / 'LICENTIE-kop.txt').read_text(encoding='utf-8'), **kw) + (ROOT / 'outputs/nwiirecomp/LICENSE').read_text(encoding='utf-8')
-    write_crlf(stage / 'LICENTIE.txt', lic)
-    write_crlf(stage / 'DERDEN-LICENTIES.txt', fill((pk / 'DERDEN-LICENTIES.txt').read_text(encoding='utf-8'), **kw))
-    (stage / 'geavanceerd').mkdir()
+    write_crlf(stage / 'LICENSE.txt', lic)
+    write_crlf(stage / 'THIRD-PARTY-NOTICES.txt', fill((pk / 'DERDEN-LICENTIES.txt').read_text(encoding='utf-8'), **kw))
+    (stage / 'advanced').mkdir()
     for p in sorted((pk / 'geavanceerd').iterdir()):
-        shutil.copy2(p, stage / 'geavanceerd' / p.name)
+        name = {'Bouw-SkyBreak.cmd': 'Build-SkyBreak.cmd', 'Installeer-Benodigdheden.cmd': 'Install-Prerequisites.cmd', 'Installeer-Benodigdheden.ps1': 'Install-Prerequisites.ps1'}.get(p.name, p.name)
+        text = p.read_text(encoding='utf-8-sig').replace('Installeer-Benodigdheden.ps1', 'Install-Prerequisites.ps1').replace('Bouw-SkyBreak.cmd', 'Build-SkyBreak.cmd')
+        (stage / 'advanced' / name).write_text(text, encoding='utf-8-sig' if name.endswith('.ps1') else 'utf-8')
 
     # legal scan BEFORE the manifest and the zip
     hashes = legal_scan.load_hashes(ROOT / 'outputs/skyward-sword/config/SOUE01')

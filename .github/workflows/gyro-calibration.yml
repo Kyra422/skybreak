@@ -1,4 +1,4 @@
-name: Gyro calibration regression
+name: Source regressions
 on: [push, pull_request]
 permissions:
   contents: read
@@ -11,3 +11,8 @@ jobs:
         run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_calibration_test.cpp -o /tmp/gyro-test
       - name: Run
         run: /tmp/gyro-test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate fresh installer settings
+        run: python tests/test_default_settings.py

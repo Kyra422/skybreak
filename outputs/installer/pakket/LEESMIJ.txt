@@ -1,91 +1,45 @@
-SkyBreak {version}
-==================
+SkyBreak {version} — Alpha 1
+==========================
 
-SkyBreak is een pc-port van The Legend of Zelda: Skyward Sword, gebouwd van
-JE EIGEN schijf. SkyBreak is een fanproject en geen officieel
-Nintendo-product. Niet-commercieel.
+First community tester release for Windows x64. Experimental and unofficial.
+Requires your own Skyward Sword Wii USA 1.0 (SOUE01, revision 0).
 
-In dit pakket zit GEEN spelcode en zitten GEEN spelbestanden of texturen:
-alleen het installatieprogramma, de vertaler en de runtime (broncode), het
-bouwscript en open-source bibliotheken. Alles wat uit de schijf komt, wordt
-alleen op jouw pc gemaakt. Deel de map die Setup bouwt niet.
+INSTALL
+1. Extract the entire ZIP. Keep all included folders beside Setup.
+2. Run SkyBreak-Setup.exe and select your own disc dump or extracted folder.
+3. Follow Setup. It checks prerequisites and asks before installing anything.
+   The first build can take 20–40 minutes or longer on slower PCs.
+   Cancellation and resume are supported.
+4. Start SkyBreak from the desktop or Start menu.
 
-NIEUW IN 0.21.0
----------------
-- Begeleide gyro-kalibratie en richttest; houding-afhankelijk mikken.
-- Officiële DolphinTool-download en vastgepinde Python-SHA-256.
-- Modgereedschappen worden mee geïnstalleerd; lees COMMUNITY-TESTEN.md.
-- Echte 144 fps is nog niet geïmplementeerd.
+REQUIREMENTS
+Windows 10/11 x64, OpenGL 3.3 graphics, Visual Studio 2022 C++ Build Tools,
+Python and DolphinTool. Setup checks the tools. Allow several GB for the game
+and build output, plus approximately 7 GB if Build Tools are missing.
+This installer is not digitally signed. Setup's SHA-256:
+{setup_sha256}
+MANIFEST.sha256 lists hashes of every included file.
 
-NIEUW IN 0.20.0
----------------
-- Launcher: SkyBreak opent op een hoofdscherm met een film en muziek
-  (SPELEN / INSTELLINGEN / AFSLUITEN). Instellingen in 7 tabbladen met uitleg,
-  terugzetten en "Wijzigingen opslaan?"; alles met muis, toetsenbord of
-  controller.
-- Besturing: indelingen "Switch HD", "Klassiek", "Wii (beweging/gyro)" en
-  "Toetsenbord + muis"; knoppen aanpassen door ze in te drukken; een
-  testpagina; knopiconen voor Xbox, PlayStation, Switch en toetsenbord.
-- Vrije camera: draai de camera om Link heen (rechterstick of muis); laat je
-  los, dan blijft hij staan. Uit = precies de Wii-camera.
-- Achtergrondfilm in het hoofdscherm (van je eigen schijf), muziek op 60 %.
-- Afsluiten: SkyBreak sluit nu netjes af; de crash bij het sluiten is weg.
-- Setup: vraagt je SkyBreak te sluiten voordat het bijwerkt, herstelt of
-  verwijdert (in plaats van halverwege te stoppen). Mappen met accenten of
-  andere tekens (bijvoorbeeld C:\Users\Zoë) werken nu. Het spel heeft het
-  SkyBreak-icoon en de launcher het vleugel-logo. De knopiconen worden na
-  het bouwen op jouw pc gemaakt (Kenney-tekeningen, CC0, passend gemaakt op
-  je eigen schijf).
+CONTROLS AND FRAME RATE
+Choose your layout in Settings > Controls. DualSense users can open Calibrate
+gyro, rest the controller on a stable surface, collect two seconds of still
+data and apply the correction. Recalibrate after restarting or reconnecting.
+F1 opens settings. F8 creates a local bug report. F12 takes a screenshot.
+Settings > Graphics > 60 fps (interpolated, experimental) enables smoother
+presentation. Gameplay remains at 30 Hz. Performance varies by PC and scene;
+native 60/144-fps gameplay is not implemented in this alpha.
 
-INSTALLEREN
------------
-1. Pak de HELE zip uit (rechtsklik > Alles uitpakken).
-2. Dubbelklik SkyBreak-Setup.exe.
-   Windows SmartScreen kan zeggen "Windows heeft uw pc beschermd": klik op
-   "Meer informatie" > "Toch uitvoeren". Setup is (nog) niet digitaal
-   ondertekend. Controleer gerust de SHA-256 hieronder.
-3. Volg de stappen:
-   - Welkom: bevestig dat je een dump van je eigen exemplaar gebruikt.
-   - Schijf: kies je .iso / .wbfs / .rvz / .wia / .gcz, of een uitgepakte map.
-     Alleen de Amerikaanse versie 1.00 (SOUE01, revisie 0) werkt.
-   - Mappen: standaard %LOCALAPPDATA%\Programs\SkyBreak (geen beheerder nodig),
-     saves in %APPDATA%\SkywardSwordPC\nand (dezelfde map als eerder).
-   - Benodigdheden: Visual Studio 2022 Build Tools (C++), Python en
-     DolphinTool. Wat ontbreekt, installeert Setup alleen na jouw toestemming.
-   - Bouwen: ongeveer 20-40 minuten, met voortgangsbalk. Annuleren mag; later
-     gaat Setup verder waar het stopte.
-4. Start SkyBreak via de snelkoppeling in het Startmenu of op het bureaublad.
+TESTING
+Read COMMUNITY-TESTING.md. Start without mods, then test one model mod at a
+time. Rendering, motion puzzles and later game areas still need testing.
+Save and close SkyBreak before updating. Setup preserves saves, settings and
+local mods. Save removal is a separate optional uninstall choice.
 
-NODIG
------
-- Windows 10 of 11, 64-bit; een videokaart met OpenGL 3.3.
-- Ongeveer 6 GB vrije ruimte (2,4 GB als je naar een uitgepakte map
-  verwijst), plus ca. 7 GB als Visual Studio nog moet worden geïnstalleerd.
+This package contains installer/launcher stubs, our source and open-source
+components. Original game files and generated game code are not included.
+Your playable build is generated locally. Do not distribute that build.
+License: LICENSE.txt. Dependency notices: THIRD-PARTY-NOTICES.txt.
+Based on NWiiRecomp by Volodymyr Vovchok / BlackLine Interactive.
+SkyBreak is not affiliated with Nintendo, ZeldaRET or Dusklight.
 
-BIJWERKEN EN VERWIJDEREN
-------------------------
-- Nieuwe versie: pak de nieuwe zip uit en start SkyBreak-Setup.exe. Setup
-  herkent je installatie, vervangt alleen gewijzigde bronbestanden en bouwt
-  incrementeel (ca. 10 minuten). Saves en instellingen blijven. Draait
-  SkyBreak nog, dan vraagt Setup je het eerst te sluiten.
-- Verwijderen: Windows-instellingen > Apps > SkyBreak > Verwijderen. Je saves
-  blijven bewaard, tenzij je dat apart aanvinkt en bevestigt.
-
-GEAVANCEERD
------------
-De map geavanceerd\ bevat de opdrachtregel-route (Bouw-SkyBreak.cmd en
-Installeer-Benodigdheden.cmd) voor wie liever zelf bouwt.
-
-CONTROLE
---------
-SHA-256 van SkyBreak-Setup.exe: {setup_sha256}
-MANIFEST.sha256 bevat de SHA-256 van elk bestand; Setup controleert die
-voordat het installeert.
-
-LICENTIES
----------
-LICENTIE.txt (NWiiRecomp-licentie: niet-commercieel, naamsvermelding, geen
-AI-training) en DERDEN-LICENTIES.txt (SDL2, toml++, Dear ImGui, Dolphin-
-signaturen, decomp-configuratie).
-Gebaseerd op NWiiRecomp door Volodymyr Vovchok (BlackLine Interactive).
-The Legend of Zelda: Skyward Sword is een handelsmerk van Nintendo.
+Advanced command-line tools are in advanced/. Use SkyBreak-Setup.exe normally.

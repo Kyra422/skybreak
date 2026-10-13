@@ -1283,9 +1283,10 @@ static GLuint EfbCopyFor(uint32_t addr) {
       return r;
     auto ok = s_interp_ram_ok.find(addr);
     if (ok == s_interp_ram_ok.end()) {
-      const auto ck = s_efb_checked.find(addr);
-      const bool fine = (ck != s_efb_checked.end() && ck->second == s_render_frame) ||
-                        RamHash(addr, in->second.bytes) == in->second.hash;
+      // The CPU may rewrite a copy's RAM after A rendered and before I.
+      // I does not advance s_render_frame, so A's checked-frame shortcut
+      // cannot validate I's reads. Hash each destination once per I frame.
+      const bool fine = RamHash(addr, in->second.bytes) == in->second.hash;
       ok = s_interp_ram_ok.emplace(addr, fine).first;
       if (!fine)
         ++s_interp_stats.stale_reads;

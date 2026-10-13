@@ -91,8 +91,9 @@ uint32_t texture_data_size(uint32_t width, uint32_t height, uint32_t format) {
 
 GLuint TextureCache::get_texture(CPUContext& ctx, const gx::TexStage& stage, uint32_t levels,
                                  bool mip_filter) {
-    if (GLuint efb = find_efb_texture(stage.base_addr))
-        return efb;
+    // renderer_gl::EfbCopyFor validates GPU copies before calling this RAM
+    // cache. Returning the registry entry here would resurrect a stale copy
+    // rejected by an isolated interpolation frame.
     // TEX7: mip chain. Level l is max(w>>l,1) x max(h>>l,1), stored right after
     // level l-1, each level padded to whole tiles (Dolphin TextureCacheBase:
     // TexDecoder_GetTextureSizeInBytes per level). The hash covers all levels.
