@@ -25,6 +25,8 @@
 //   NWII_INTERP_LOG=1          one [INTERP17] line per guest frame (decision, match, camera, timings)
 //   NWII_INTERP_PROFILE=1      time of the per-draw hooks inside the in-between frame (in the stats line)
 //   NWII_INTERP_FORCE=1        no budget / behind / pacing skips (leak test, profiling)
+//   NWII_INTERP_BUDGET_PERCENT=<75..95> render budget (default 95 percent of the guest frame)
+//   NWII_INTERP_RETRY_US=<100000..500000> minimum overload retry pause (default 133333 us)
 //   NWII_INTERP_KMODE=0        camera delta per vertex on the CPU instead of in the projection (A/B, slower)
 //   NWII_INTERP_SHOT=<prefix>  every NWII_INTERP_SHOT_EVERY (60) frames: <prefix>_<N>_a.bmp (N-1, the image
 //                              on screen before I), _i.bmp (I), _b.bmp (N), 640x480 like NWII_SCREENSHOT
@@ -208,13 +210,18 @@ public:
       }
     } else if (!force_ && w1 < budget_skip_until_us_) why = "budget";
     else if (!force_ && !budget_trial_ && ema_ri_us_ &&
-             (w1 - info_.t_cut_us) + MaxOf(ri_hist_) + MaxOf(rn_hist_) + MaxOf(prep_hist_) >
-                 (info_.period_us * 90) / 100) {
+             (w1 - info_.t_cut_us) + MaxOf(ri_hist_) + MaxOf(rn_hist_) >
+                 (info_.period_us * budget_percent_) / 100) {
       // (the second-slowest of the last 8 measured renders: a frame over the budget would merge (lose) the next)
       // both renders would not fit in the guest frame: the next frame would be merged (lost). Show this one
-      // for two periods instead; after 0.5 s one trial in-between frame measures the cost again.
+      // for two periods instead; a short pause is enough for a small spike.
+      // Heavy overload extends the pause so trial renders do not hurt real frames.
       why = "budget";
-      budget_skip_until_us_ = w1 + 500000;
+      // ri_hist_ includes PrepareAll and render together; do not charge preparation twice.
+      const int64_t predicted = (w1 - info_.t_cut_us) + MaxOf(ri_hist_) + MaxOf(rn_hist_);
+      const int64_t overload = std::max<int64_t>(0, predicted - info_.period_us);
+      const int64_t retry = std::min<int64_t>(500000, budget_retry_us_ + overload * 8);
+      budget_skip_until_us_ = w1 + retry;
       budget_trial_ = true;
       ++win_.budget_trips;
     }
@@ -271,7 +278,6 @@ public:
       const int64_t q0 = gx::InterpNowUs();
       ip::PrepareAll(prev_rec_, cur_rec_, plan_, cfg_, frame, prev_cmds_, prev_vh_, cur_vh_, prep_, &par_);
       win_.prep_us += (uint64_t)(gx::InterpNowUs() - q0);
-      prep_hist_[prep_i_++ & 7] = gx::InterpNowUs() - q0;
       b_cmds_ = &frame;
       di_ = 0;
       ov_.nw = 0;
@@ -289,7 +295,7 @@ public:
       ema_ri_us_ = ema_ri_us_ && !trial_render_ ? (ema_ri_us_ * 3 + (r1 - r0)) / 4 : (r1 - r0);
       if (trial_render_) std::fill(std::begin(ri_hist_), std::end(ri_hist_), int64_t(0)); // re-measure after a pause
       ri_hist_[ri_i_++ & 7] = r1 - r0;
-      if (ema_rn_us_) auto_.Measured((r1 - r0) + prep_hist_[(prep_i_ - 1) & 7], ema_rn_us_); // MVGEN21
+      if (ema_rn_us_) auto_.Measured(r1 - r0, ema_rn_us_); // includes preparation already
     }
     if (!rendered)
       return;
@@ -511,6 +517,8 @@ private:
     guards_ = EnvInt("NWII_INTERP_GUARDS", 1) != 0;
     log_ = EnvInt("NWII_INTERP_LOG", 0) != 0;
     force_ = EnvInt("NWII_INTERP_FORCE", 0) != 0;
+    budget_percent_ = std::clamp(EnvInt("NWII_INTERP_BUDGET_PERCENT", 95), 75, 95);
+    budget_retry_us_ = std::clamp(EnvInt("NWII_INTERP_RETRY_US", 133333), 100000, 500000);
     prof_ = EnvInt("NWII_INTERP_PROFILE", 0) != 0;
     kmode_ = EnvInt("NWII_INTERP_KMODE", 1) != 0;
     if (const char *e = std::getenv("NWII_INTERP_SHOT"); e && *e) shot_prefix_ = e;
@@ -690,8 +698,8 @@ private:
   // pacing / stats
   int64_t last_cut_us_ = 0, period_us_ = 0, raw_ema_us_ = 0, budget_skip_until_us_ = 0;
   int64_t ema_ri_us_ = 0, ema_rn_us_ = 0, t_before_n_us_ = 0;
-  int64_t ri_hist_[8] = {}, rn_hist_[8] = {}, prep_hist_[8] = {}; // last 8 measured render / prepare times
-  unsigned ri_i_ = 0, rn_i_ = 0, prep_i_ = 0;
+  int64_t ri_hist_[8] = {}, rn_hist_[8] = {}; // last 8 measured interpolation (incl. preparation) / real render times
+  unsigned ri_i_ = 0, rn_i_ = 0;
   // the second-slowest of the last 8 (one outlier, e.g. a shader compile, does not pause interpolation)
   static int64_t MaxOf(const int64_t (&h)[8]) {
     int64_t t[8];
@@ -700,6 +708,7 @@ private:
     return t[6];
   }
   bool budget_trial_ = false, trial_render_ = false, trial_next_ = false; // after a budget pause: one trial frame
+  int budget_percent_ = 95, budget_retry_us_ = 133333;
   gx::InterpFrameInfo info_;
   std::atomic<bool> display_ok_{true};
   Window win_;

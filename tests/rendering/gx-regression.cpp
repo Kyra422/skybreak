@@ -535,6 +535,28 @@ int main() {
     check(registry&&tc.find_efb_texture(kInd)==registry,"V32 real EFB registry survives isolated stale read");
   }
 
+  {
+    Cmds c; BaseState(c);
+    c.bp(0x00, 15u << 10); // unique, sixteen-stage program, absent from prior tests
+    c.quad(Quad{});
+    struct PassHook:gx::InterpDrawHook {
+      bool Pre(size_t,const GXCommand&)override{return true;}
+      void PostConvert(const GXCommand&,float*,size_t)override{}
+      void Post(size_t,const GXCommand&)override{}
+    } hook;
+    uint8_t before[4], after[4]; Px(EW/4,EH/2,before);
+    const auto initial=gx::GetInterpRenderStats();
+    gx::RendererSetCompileBudget(0);
+    const bool accepted=gx::RenderInterpFrame(*s_r,c.v,hook);
+    const auto missed=gx::GetInterpRenderStats();
+    Px(EW/4,EH/2,after);
+    check(!accepted && missed.skipped_draws>initial.skipped_draws,
+      "V33 incomplete interpolated frame is refused while its shader is unavailable");
+    check(std::memcmp(before,after,4)==0,"V33 refused interpolation preserves the real EFB image");
+    gx::RendererSetCompileBudget(1<<20);
+    check(gx::RenderInterpFrame(*s_r,c.v,hook),"V33 complete interpolated frame is accepted after its shader becomes available");
+  }
+
   std::printf("%s: light7 test, %d checks, %d failures\n", fails ? "FAIL" : "PASS", checks, fails);
   s_r.reset();
   SDL_GL_DeleteContext(glc);

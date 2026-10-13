@@ -683,7 +683,12 @@ inline Camera EstimateCamera(const FrameRec &A, const FrameRec &B) {
   cand.reserve(B.draws.size());
   for (int i = 0; i < (int)B.draws.size(); ++i) {
     const DrawRec &d = B.draws[i];
-    if (d.match >= 0 && !d.ortho && d.kind != kBank) cand.push_back(i);
+    // A loose match of direct-position geometry can be a camera-facing
+    // particle whose vertices already contain its view-dependent motion.
+    // Its matrix is not evidence of the world's camera transform. Otherwise
+    // a burst of particles can outvote the static world and switch the camera
+    // estimate between identity and the actual turn on consecutive frames.
+    if (d.match >= 0 && !d.ortho && d.kind != kBank && !(d.direct_pos && d.tier == 3)) cand.push_back(i);
   }
   if (cand.empty()) return cam;
   // the vote and the average run on an evenly strided subsample of <= 2048 deltas
@@ -1301,7 +1306,12 @@ inline void PrepareDraw(const FrameRec &A, const FrameRec &B, const Plan &P, con
   else if (d.kind == kBank && d.bank && a.bank) ov.vmode = 2;
   const auto &vb = bcmd.vertices;
   const bool same_data = vh_a && vh_b && vh_a == vh_b;
-  if (cfg.vertex_lerp && !same_data && acmd && acmd->vertices.size() == vb.size() && !vb.empty()) {
+  // A loose direct-position match does not identify a particle instance.
+  // Camera-facing/sorted effects can reuse a packet for another fountain or
+  // particle: blending its vertices drags it between unrelated world anchors.
+  // Hold B's geometry while still applying the reliable camera/matrix motion.
+  const bool uncertain_direct = !d.ortho && d.direct_pos && d.tier == 3;
+  if (cfg.vertex_lerp && !uncertain_direct && !same_data && acmd && acmd->vertices.size() == vb.size() && !vb.empty()) {
     const auto &va = acmd->vertices;
     float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f}, maxd = 0;
     for (size_t i = 0; i < vb.size(); ++i) {

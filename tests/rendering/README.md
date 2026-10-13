@@ -11,12 +11,21 @@ cmake --build build/rendering
 ctest --test-dir build/rendering --output-on-failure
 ```
 
-The 33 pixel/state checks cover TEV output, indirect texture offsets, all four
+The 36 pixel/state checks cover TEV output, indirect texture offsets, all four
 indirect bit formats, current-stage bump alpha, channel lighting and swap tables.
 The final regression rewrites a GPU copy's RAM between a real and interpolated
 frame: interpolation must sample the new RAM texture while preserving the real
 copy registry. CTest sets `NWII_EFB_TRUECOLOR=1` to compare shader output without
-the separately implemented EFB storage quantization.
+the separately implemented EFB storage quantization. The shader-budget regression
+refuses an incomplete interpolated frame, checks that the real EFB is preserved,
+and accepts the frame once its shader is available.
 
 The pre-fix shader fails 11 checks. Restoring the pre-fix GPU-copy handling fails
-the stale-texture pixel check. Those negative controls were verified locally.
+the stale-texture pixel check. The renderer before the completeness fix fails
+the incomplete-frame rejection check. Those negative controls were verified locally.
+
+The source-only `tests/interpolation_test.cpp` contains 31 checks and runs in CI
+without game data or a GPU. Its particle regressions cover a dominant burst of
+ambiguous direct-position draws, world-camera estimation, holding an uncertain
+effect's current geometry, and retaining indexed-geometry interpolation. The
+previous header fails those three particle regressions and passes the other 28.

@@ -16,6 +16,11 @@ Alpha 2 fixes the installer: overlapping builds are blocked, and the active
 CMake/Ninja output is shown with direct access to the diagnostic log. Gameplay
 is unchanged from Alpha 1; successful Alpha 1 installations can keep playing.
 
+The development branch now includes **0.22.0 Graphics Preview 1**, with
+particle/camera matching fixes, incomplete-frame rejection and faster recovery
+after brief interpolation slowdowns. These changes are not in the Alpha 2
+download. See [preview validation and remaining limits](docs/GRAPHICS_PREVIEW.md).
+
 This alpha includes English defaults and guides, guided gyro calibration,
 controller layouts, asset mod tools, achievements and Discord Rich Presence.
 Renderer fixes correct indirect-texture format bits, same-stage bump alpha and

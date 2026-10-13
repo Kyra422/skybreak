@@ -3977,6 +3977,7 @@ bool RenderInterpFrame(IRenderer &r, const std::vector<GXCommand> &commands, Int
   s_interp_hook = &hook;
   r.Render(commands);
   s_interp_hook = nullptr;
+  const bool complete = s_skipped_draws == skipped;
   s_interp_stats.skipped_draws += s_skipped_draws - skipped;
   s_interp_stats.xfb_copies += s_stats.xfb_copies - stats.xfb_copies;
   s_interp_stats.flushes += s_stats.flushes - stats.flushes;
@@ -3997,7 +3998,11 @@ bool RenderInterpFrame(IRenderer &r, const std::vector<GXCommand> &commands, Int
   glBindFramebuffer(GL_FRAMEBUFFER, s_efb_fbo);
   InvalidateGLState();
   NeutralGLState();
-  return true;
+  // A shader still compiling can leave whole objects out of I. Showing that
+  // partial image between complete real frames looks like geometry flashing.
+  // Keep the compiled shaders, restore real-frame state, and let the caller
+  // present N alone until every draw in I is available.
+  return complete;
 }
 
 void InterpWriteXF(int addr, const float *v, int n) {

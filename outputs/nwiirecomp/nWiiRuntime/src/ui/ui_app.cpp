@@ -92,7 +92,7 @@ namespace {
 namespace fs = std::filesystem;
 using runtime::Config;
 
-constexpr const char* kVersion = "0.22.0 Alpha 1"; // LAUNCH19: SkyBreak 0.19 (installer VERSION 0.19.0)
+constexpr const char* kVersion = "0.22.0 Graphics Preview 1";
 
 // ---------------------------------------------------------------------------------------- look
 const ImU32 kGold = IM_COL32(236, 200, 120, 255);
