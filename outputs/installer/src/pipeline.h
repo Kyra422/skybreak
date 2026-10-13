@@ -57,6 +57,7 @@ struct PipelineState {
     std::string fail_msg;
     bool waiting = false;      // REL22: the script waits at step 8 until SkyBreak of this installation is closed ('wacht')
     std::string wait_msg;
+    fs::path detail_log;       // active CMake/Ninja output, supplied by the build script
     std::deque<std::string> log_tail; // last lines of the script output
 };
 
@@ -70,6 +71,7 @@ public:
     const BuildOptions& Options() const { return opt_; }
     const std::vector<StepPlan>& Plan() const { return plan_; }
     bool Running() const { return running_; }
+    fs::path DiagnosticLog() const { return st_.detail_log.empty() ? opt_.log : st_.detail_log; }
 
     // Pure progress model (unit-tested): apply one JSON line from -VoortgangJson.
     void ApplyEvent(const Json& ev);

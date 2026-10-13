@@ -375,10 +375,26 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int) {
 
     if (RelaunchFromTemp(o, args)) return 0;
 
-    HANDLE mutex = CreateMutexW(nullptr, TRUE, o.ui_snapshot.empty() && !o.headless ? L"Local\\SkyBreakSetup" : nullptr);
-    if (o.ui_snapshot.empty() && !o.headless && GetLastError() == ERROR_ALREADY_EXISTS) {
-        MessageBoxW(nullptr, L"SkyBreak-Setup is already running.", L"SkyBreak", MB_ICONINFORMATION);
-        return 1;
+    // GUI and headless setup both modify sources, state and the same Ninja files.
+    // Isolated test/snapshot runs never share a real installation.
+    bool exclusive = o.ui_snapshot.empty() && o.sandbox.empty();
+    HANDLE mutex = CreateMutexW(nullptr, TRUE, exclusive ? L"Local\\SkyBreakSetup" : nullptr);
+    DWORD mutex_error = GetLastError();
+    if (!mutex || (exclusive && mutex_error == ERROR_ALREADY_EXISTS)) {
+        std::string error = mutex ? "Another SkyBreak setup is already running. Wait for it to finish, then try again."
+                                  : "Could not acquire the SkyBreak setup lock.";
+        sb::Log("[setup-lock] %s", error.c_str());
+        if (o.headless) {
+            sb::Json result = sb::Json::Object();
+            result.set("exit", sb::kExitBusy);
+            result.set("error", error);
+            result.set("finished", sb::NowIso());
+            if (!hio.result.empty()) sb::WriteText(hio.result, result.Dump(2) + "\n");
+        } else {
+            MessageBoxW(nullptr, sb::W(error).c_str(), L"SkyBreak", MB_ICONINFORMATION);
+        }
+        if (mutex) CloseHandle(mutex);
+        return sb::kExitBusy;
     }
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 

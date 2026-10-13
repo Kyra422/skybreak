@@ -99,7 +99,14 @@ void Pipeline::ApplyEvent(const Json& ev) {
     int step = ev.integer("stap", 0);
     double t = ev.num("t", st_.elapsed_s);
     if (status != "wacht") st_.waiting = false; // REL22: any later event = no longer waiting
-    if (status == "wacht") {                    // REL22: SkyBreak of this installation runs; the script polls until it is closed
+    if (status == "log") {
+        // Only follow logs in this build's log folder, never arbitrary event paths.
+        fs::path path = Normal(P(ev.str("msg")));
+        if (Normal(path.parent_path()) == Normal(opt_.work_dir / L"logs") && path != st_.detail_log) {
+            st_.detail_log = path;
+            log_off_ = 0;
+        }
+    } else if (status == "wacht") {                    // REL22: SkyBreak of this installation runs; the script polls until it is closed
         st_.waiting = true;
         st_.wait_msg = ev.str("msg");
     } else if (status == "start") {
@@ -185,7 +192,7 @@ void Pipeline::ReadProgressFile() {
 }
 
 void Pipeline::ReadLogTail() {
-    std::ifstream f(opt_.log, std::ios::binary);
+    std::ifstream f(DiagnosticLog(), std::ios::binary);
     if (!f) return;
     f.seekg(0, std::ios::end);
     uint64_t size = uint64_t(f.tellg());

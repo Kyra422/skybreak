@@ -20,7 +20,8 @@ namespace sb {
 
 // Headless exit codes (design §3).
 enum ExitCode { kExitOk = 0, kExitError = 1, kExitDisc = 2, kExitPrereq = 3, kExitCancelled = 4, kExitSpace = 5, kExitPackage = 6,
-                kExitRunning = 7 /* REL22: SkyBreak of this installation still runs; nothing changed */ };
+                kExitRunning = 7 /* REL22: SkyBreak of this installation still runs; nothing changed */,
+                kExitBusy = 8 /* Another real Setup process owns the installer session. */ };
 
 struct Options {
     bool headless = false;

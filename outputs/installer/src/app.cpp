@@ -45,6 +45,9 @@ std::string HintFor(const std::string& kind, const std::deque<std::string>& tail
     std::string all;
     for (auto& l : tail) all += l + "\n";
     std::string low = Lower(all);
+    if (low.find("failed recompaction") != std::string::npos)
+        return en ? "Ninja could not update its build files. Another build may be using this folder. Wait for it to finish, then click Try again."
+                  : "Ninja kon de bouwbestanden niet bijwerken. Mogelijk gebruikt een andere build deze map. Wacht tot die klaar is en probeer opnieuw.";
     if (kind == "ruimte" || low.find("not enough space") != std::string::npos || low.find("disk is full") != std::string::npos)
         return en ? "The disk is full. Free some space and click Try again." : "De schijf is vol. Maak ruimte vrij en klik op Opnieuw proberen.";
     if (low.find("c1060") != std::string::npos || low.find("out of heap") != std::string::npos || low.find("c1076") != std::string::npos)
@@ -935,7 +938,7 @@ void App::PageBuild() {
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 4) ImGui::SetScrollHereY(1.0f);
         ImGui::PopFont();
         ImGui::EndChild();
-        if (ImGui::Button(T("Logmap openen", "Open log folder").c_str())) e_.plat().OpenFolder(c_.install_dir / L"setup" / L"logs");
+        if (ImGui::Button(T("Bouwlog openen", "Open build log").c_str())) e_.plat().OpenFolder(e_.pipeline().DiagnosticLog());
         ImGui::SameLine();
         if (ImGui::Button(T("Kopieer log", "Copy log").c_str())) {
             std::string all;
@@ -1003,7 +1006,10 @@ void App::PageError() {
     ImGui::Spacing();
     if (ImGui::Button(T("Opnieuw proberen", "Try again").c_str())) BeginBuild();
     ImGui::SameLine();
-    if (ImGui::Button(T("Log openen", "Open log").c_str())) e_.plat().OpenFolder(c_.install_dir / L"setup" / L"logs");
+    if (ImGui::Button(T("Bouwlog openen", "Open build log").c_str())) {
+        fs::path log = e_.pipeline().DiagnosticLog();
+        e_.plat().OpenFolder(log.empty() ? c_.install_dir / L"setup" / L"logs" : log);
+    }
     ImGui::SameLine();
     if (ImGui::Button(T("Terug naar Benodigdheden", "Back to Prerequisites").c_str())) { rep_valid_ = false; Go(kPrereqs); }
     ImGui::SameLine();

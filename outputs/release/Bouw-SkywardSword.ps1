@@ -112,6 +112,7 @@ $freezeSymbols = Join-Path $outputsDir 'pc-tests\freeze8\freeze_symbols.txt'
 
 $stappen = New-Object System.Collections.ArrayList
 $totaalKlok = [Diagnostics.Stopwatch]::StartNew()
+$script:BuildMutex = $null
 
 # ------------------------------------------------------------------------------------------ hulpfuncties
 function Fout([string]$Melding) { throw [System.Exception]::new($Melding) }
@@ -146,6 +147,21 @@ function Fout-Soort($Uitzondering) {
 
 function Volledig-Pad([string]$Pad) {
     return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Pad).TrimEnd('\')
+}
+
+# Setup and the advanced build command must not edit the same Ninja files together.
+function Lock-Build([string]$Map) {
+    $normal = (Volledig-Pad $Map).ToLowerInvariant()
+    $hash = [Security.Cryptography.SHA256]::Create()
+    try { $key = [BitConverter]::ToString($hash.ComputeHash([Text.Encoding]::UTF8.GetBytes($normal))).Replace('-', '') }
+    finally { $hash.Dispose() }
+    $mutex = New-Object Threading.Mutex($false, ('Local\SkyBreakBuild-' + $key))
+    $held = $false
+    try {
+        try { $held = $mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $held = $true }
+        if (-not $held) { Fout 'Another SkyBreak build is using this folder. Wait for it to finish, then try again.' }
+        return $mutex
+    } catch { $mutex.Dispose(); throw }
 }
 
 function Quote-Arg([string]$A, [switch]$Cmd) {
@@ -193,6 +209,7 @@ function Log-Staart([string]$Log, [int]$Regels = 25) {
 # Start een langlopend programma via cmd.exe met alle uitvoer naar $Log; toont voortgang ("[12/345]").
 # Het proces draait met lagere prioriteit, zodat de pc bruikbaar blijft.
 function Start-Gelogd([string]$Exe, [string[]]$Argumenten, [string]$Log, [string]$Titel, [string]$Map = '') {
+    Voortgang 'log' -Melding (Volledig-Pad $Log)
     $regel = (Quote-Arg $Exe -Cmd) + ' ' + ((@($Argumenten) | ForEach-Object { Quote-Arg $_ -Cmd }) -join ' ')  # REVINSTALL19: -Cmd
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $env:ComSpec
@@ -341,6 +358,7 @@ try {
     $Uitvoer = Volledig-Pad $Uitvoer
     $Werkmap = Volledig-Pad $Werkmap
     $IsoPad = Volledig-Pad $Iso
+    $script:BuildMutex = Lock-Build $Werkmap
     if (-not (Test-Path -LiteralPath $IsoPad)) { Fout "Disc file or folder not found: $IsoPad" }
     $isoIsMap = Test-Path -LiteralPath $IsoPad -PathType Container
     foreach ($nodig in @($runtimeSrc, $profileToml, $symbolsCsv, $sigdb, $helper, $templates, (Join-Path $decompCfgDir 'config.yml'), (Join-Path $nwiiSrc 'CMakeLists.txt'))) {
@@ -738,4 +756,10 @@ catch {
     if ($_.Exception.GetType().FullName -ne 'System.Exception' -and $_.InvocationInfo) { Write-Host $_.InvocationInfo.PositionMessage -ForegroundColor DarkGray }
     if ($stappen.Count -gt 0) { Write-Host ('Completed through: ' + $stappen[$stappen.Count - 1].Stap) }
     exit 1
+}
+finally {
+    if ($null -ne $script:BuildMutex) {
+        $script:BuildMutex.ReleaseMutex()
+        $script:BuildMutex.Dispose()
+    }
 }

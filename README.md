@@ -6,11 +6,15 @@ the runtime, translator, installer, launcher, local achievements, Discord Rich
 Presence and asset mod support. It contains no original game files or generated
 game code.
 
-## First tester release — 0.22.0 Alpha 1
+## Tester release — 0.22.0 Alpha 2
 
-[Download the Windows tester package](https://github.com/Kyra422/skybreak/releases/tag/v0.22.0-alpha.1).
+[Download the Windows tester package](https://github.com/Kyra422/skybreak/releases/tag/v0.22.0-alpha.2).
 Extract the entire ZIP and run **SkyBreak-Setup.exe**. The playable game is built
 locally from your own supported disc; no original game files are included.
+
+Alpha 2 fixes the installer: overlapping builds are blocked, and the active
+CMake/Ninja output is shown with direct access to the diagnostic log. Gameplay
+is unchanged from Alpha 1; successful Alpha 1 installations can keep playing.
 
 This alpha includes English defaults and guides, guided gyro calibration,
 controller layouts, asset mod tools, achievements and Discord Rich Presence.
