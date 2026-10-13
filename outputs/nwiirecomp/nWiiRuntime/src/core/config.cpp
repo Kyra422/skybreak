@@ -396,6 +396,8 @@ static void load_input10(const toml::table& tbl, Config& cfg) {
         error(std::string("[input] ") + key + " must be one of " + list + "; using \"" + out + "\"");
     };
     choice("preset_gamepad", cfg.preset_gamepad, {"switch-hd", "classic", "wii-motion"});
+    if (!input->contains("preset_gamepad") && cfg.gamepad_motion == "gyro")
+        cfg.preset_gamepad = "wii-motion"; // Compatibility for files predating control layouts.
     choice("preset_keyboard", cfg.preset_keyboard, {"kbm", "classic"});
     const auto flag = [&](const toml::table* t, const char* block, const char* key, bool& out) {
         if (!t) return;

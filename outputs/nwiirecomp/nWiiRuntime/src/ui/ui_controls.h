@@ -230,9 +230,10 @@ inline std::string TriggerName(int axis) {
     return axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT ? "lefttrigger"
          : axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT ? "righttrigger" : std::string();
 }
-// Keys the port keeps for itself (never bound): F1 = port menu, F11 = fullscreen, F12 = screenshot.
+// Keys the port keeps for itself: F1 menu, F8 bug report, F11 fullscreen, F12 screenshot.
 inline bool ReservedKey(int scancode) {
-    return scancode == SDL_SCANCODE_F1 || scancode == SDL_SCANCODE_F11 || scancode == SDL_SCANCODE_F12;
+    return scancode == SDL_SCANCODE_F1 || scancode == SDL_SCANCODE_F8 ||
+           scancode == SDL_SCANCODE_F11 || scancode == SDL_SCANCODE_F12;
 }
 
 // ------------------------------------------------------------------------------------------- labels

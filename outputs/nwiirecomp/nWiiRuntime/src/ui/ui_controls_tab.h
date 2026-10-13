@@ -32,7 +32,7 @@ struct ControlsTabHost {
 
 void RenderGyroCalibration(Settings& edit,const ControlsTabHost& host);
 void RenderControlsTab(Settings& edit, const Settings& saved, const ControlsTabHost& host);
-bool ControlsEvent(const SDL_Event& e, Settings& edit, const Settings& saved);
+bool ControlsEvent(const SDL_Event& e, Settings& edit, const Settings& saved, bool* binding_changed = nullptr);
 bool ControlsCapturing();
 void ControlsCancelCapture();
 void ApplyGlyphSet(const Settings& saved);

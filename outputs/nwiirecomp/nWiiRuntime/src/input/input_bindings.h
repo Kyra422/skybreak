@@ -452,9 +452,8 @@ inline InputBindings resolve_input_bindings(const Config& cfg, bool print = true
         b.pad_preset = pg == "classic" || pg == "klassiek" ? PadPreset::Classic
                        : pg == "wiimotion" || pg == "wii" || pg == "gyro" ? PadPreset::WiiMotion : PadPreset::SwitchHd;
         b.key_preset = pk == "classic" || pk == "klassiek" ? KeyPreset::Classic : KeyPreset::Kbm;
-        // INPUT10 compatibility: gamepad_motion = "gyro" with the default preset = the Wii motion preset.
-        if (cfg.gamepad_motion == "gyro" && cfg.preset_gamepad == "switch-hd" && !std::getenv("NWII_INPUT_PRESET_GAMEPAD"))
-            b.pad_preset = PadPreset::WiiMotion;
+        // Legacy gyro-only files migrate when loaded. An explicitly selected
+        // layout always owns its binding table, including HD with gyro enabled.
         b.gyro_aim = cfg.gyro_aim;
         b.gyro_player_space = cfg.gyro_player_space;
         b.a_does_not_dash = cfg.a_does_not_dash;

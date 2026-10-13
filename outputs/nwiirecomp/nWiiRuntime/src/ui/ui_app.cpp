@@ -92,7 +92,7 @@ namespace {
 namespace fs = std::filesystem;
 using runtime::Config;
 
-constexpr const char* kVersion = "0.22.0 Preview 3";
+constexpr const char* kVersion = "0.22.0 Preview 4";
 
 // ---------------------------------------------------------------------------------------- look
 const ImU32 kGold = IM_COL32(236, 200, 120, 255);
@@ -818,6 +818,18 @@ void ApplyLive(const Settings& e) {
     ApplyGlyphSet(e);                                // knopiconen
     ApplyAudioGain();
     if (font_change) g.font_scale = 0.0f;            // [ui] game_font: rebuild the fonts next frame
+}
+
+// Capture edits happen in the event loop, before the settings page snapshots
+// its state for drawing. Publish them here so they preview immediately. Releases
+// still reach ImGui, preventing the button that opened capture from staying held.
+bool ProcessControlsEvent(const SDL_Event& e) {
+    bool changed = false;
+    const bool consumed = ControlsEvent(e, g.edit, g.saved, &changed);
+    if (changed) ApplyLive(g.edit);
+    if (consumed && e.type == SDL_CONTROLLERBUTTONUP) FeedGamepad(e);
+    if (consumed && (e.type == SDL_KEYUP || e.type == SDL_MOUSEBUTTONUP)) ImGui_ImplSDL2_ProcessEvent(&e);
+    return consumed;
 }
 
 bool SaveSettings(std::string& status) {
@@ -2082,6 +2094,7 @@ struct AppHost final : autotest::Host {
         if (q == "cfg_aspect") return std::to_string(Config::get().aspect_mode);
         if (q == "cfg_fullscreen") return b01(Config::get().fullscreen);
         if (q == "cfg_internal_scale") return std::to_string(Config::get().internal_scale);
+        if (q == "ui_key_a_held") return b01(ImGui::IsKeyDown(ImGuiKey_A));
         if (q.rfind("saved.", 0) == 0) return SettingValue(g.saved, q.substr(6));
         if (q.rfind("edit.", 0) == 0) return SettingValue(g.edit, q.substr(5));
         if (q.rfind("widget:", 0) == 0) return b01(g.rects.count(q.substr(7)) > 0);
@@ -2269,6 +2282,7 @@ bool RunLauncher() {
         }
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
+            if (ProcessControlsEvent(e)) continue; // capture edits and reserved keys before menu shortcuts
             // F11 / Alt+Enter toggle fullscreen only: ImGui must not also see the Enter (UIT14: it activated
             // the focused entry, so Alt+Enter on the title screen started the game).
             if (e.type == SDL_KEYDOWN && IsFullscreenKey(e.key.keysym)) {
@@ -2278,7 +2292,6 @@ bool RunLauncher() {
                 }
                 continue;
             }
-            if (ControlsEvent(e, g.edit, g.saved)) continue; // CTRL18-UI: rebind capture + device tracking
             ImGui_ImplSDL2_ProcessEvent(&e);
             if (e.type == SDL_KEYDOWN) { g.dbg_key = e.key.keysym.sym; g.dbg_key_win = e.key.windowID; }
             if (e.type == SDL_QUIT ||
@@ -2496,12 +2509,12 @@ bool Start(SDL_Window* window, SDL_GLContext gl_ctx, const char* game_dir) {
 }
 
 bool HandleEvent(const SDL_Event& e) {
-    if (g.overlay && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F8 && !e.key.repeat) {
+    if (g.overlay && !ControlsCapturing() && e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_F8 && !e.key.repeat) {
         g.report_pending = true; return true;
     }
 
     if (!g.overlay) return false;
-    if (ControlsEvent(e, g.edit, g.saved)) return true; // CTRL18-UI: rebind capture (menu open) + device tracking
+    if (ProcessControlsEvent(e)) return true; // capture edits preview before drawing
     if (e.type == SDL_KEYDOWN) { g.dbg_key = e.key.keysym.sym; g.dbg_key_win = e.key.windowID; } // autotest query
     if (e.type == SDL_WINDOWEVENT && (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST || e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED)) {
         g.focused = e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED; // LAUNCH19: [audio] mute_when_unfocused

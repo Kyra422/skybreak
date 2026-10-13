@@ -352,7 +352,8 @@ void ApplyGlyphSet(const Settings& saved) {
               << " (device " << glyphs::DeviceName(d) << (s.dev.known ? ", last used" : ", at start") << ")" << std::endl;
 }
 
-bool ControlsEvent(const SDL_Event& e, Settings& edit, const Settings& saved) {
+bool ControlsEvent(const SDL_Event& e, Settings& edit, const Settings& saved, bool* binding_changed) {
+    if (binding_changed) *binding_changed = false;
     TabState& s = T();
     NoteLive(e);
     const bool pad_event = e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_CONTROLLERAXISMOTION;
@@ -368,7 +369,12 @@ bool ControlsEvent(const SDL_Event& e, Settings& edit, const Settings& saved) {
         const SDL_Scancode sc = e.key.keysym.scancode;
         if (sc == SDL_SCANCODE_ESCAPE) { EndCapture("Geannuleerd.", false); break; }
         if (ti.pad) { s.msg = "Druk op een knop van de controller (Esc = annuleren)."; s.msg_err = true; break; }
-        if (ct::ReservedKey(sc)) { s.msg = "F1, F11 en F12 zijn gereserveerd (menu, volledig scherm, schermafdruk)."; s.msg_err = true; break; }
+        if (ct::ReservedKey(sc)) {
+            s.msg = runtime::ui_config().language == "en" ?
+                "F1, F8, F11 and F12 are reserved for the menu, bug reports, fullscreen and screenshots." :
+                "F1, F8, F11 en F12 zijn gereserveerd voor het menu, bugrapporten, volledig scherm en schermafdrukken.";
+            s.msg_err = true; break;
+        }
         name = ct::KeyName(sc);
         if (name.empty()) { s.msg = "Deze toets wordt niet ondersteund; kies een andere."; s.msg_err = true; }
         break;
@@ -401,9 +407,12 @@ bool ControlsEvent(const SDL_Event& e, Settings& edit, const Settings& saved) {
     }
     if (!name.empty()) {
         Assign(edit, s.cap.table, s.cap.action, name);
+        if (binding_changed) *binding_changed = true;
         const std::string help = ActionHelp(s.cap.table, s.cap.action);
-        EndCapture(ct::InputLabel(name, ti.pad, ti.pad ? PadFamily() : Device::Keyboard) + " -> " + help +
-                       ". Druk op Opslaan om te bewaren.", false);
+        EndCapture(runtime::ui_config().language == "en" ?
+                       "Binding changed. It applies immediately; select Save to keep it." :
+                       ct::InputLabel(name, ti.pad, ti.pad ? PadFamily() : Device::Keyboard) + " -> " + help +
+                       ". Werkt meteen; druk op Opslaan om te bewaren.", false);
         std::cout << "[CTRL18-UI] rebind [" << ti.section << "] " << s.cap.action << " = \"" << name << "\"" << std::endl;
     }
     return consumed;
@@ -437,7 +446,7 @@ std::string ControlsQuery(const std::string& q, const Settings& edit, const Sett
     }
     if (q == "last_input") return s.last_input.empty() ? "none" : s.last_input;
     // bind:<section>:<action> (edit), savedbind:<section>:<action>, conflicts:<section>
-    for (const char* pre : {"bind:", "savedbind:", "conflicts:"}) {
+    for (const char* pre : {"bind:", "savedbind:", "livebind:", "conflicts:"}) {
         const size_t n = std::strlen(pre);
         if (q.compare(0, n, pre) != 0) continue;
         const std::string rest = q.substr(n);
@@ -445,7 +454,9 @@ std::string ControlsQuery(const std::string& q, const Settings& edit, const Sett
         bool ok = false;
         const ct::TableId t = TableFromSection(rest.substr(0, c), ok);
         if (!ok) return "?";
-        const Settings& src = std::strcmp(pre, "savedbind:") == 0 ? saved : edit;
+        const Settings live = FromConfig(runtime::Config::get());
+        const Settings& src = std::strcmp(pre, "savedbind:") == 0 ? saved :
+                              std::strcmp(pre, "livebind:") == 0 ? live : edit;
         const std::vector<ct::Row> rows = ct::Rows(t);
         if (std::strcmp(pre, "conflicts:") == 0)
             return std::to_string(ct::Conflicts(rows, Map(src, t), ct::Table(t).pad).size());

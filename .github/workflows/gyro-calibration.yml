@@ -28,3 +28,20 @@ jobs:
           python-version: '3.12'
       - name: Validate fresh installer settings
         run: python tests/test_default_settings.py
+  buttons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install source-only input test headers
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libtomlplusplus-dev
+      - name: Compile production button mapping regression
+        run: >-
+          g++ -std=c++20 -O2 -pthread -I/usr/include/SDL2
+          -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include
+          tests/button_mapping_test.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/input_manager.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/sources/gamepad_source.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/sources/mouse_keyboard_source.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/core/config.cpp -o /tmp/button-test
+      - name: Check mapping, layout selection, calibration and sensor timing
+        run: /tmp/button-test
