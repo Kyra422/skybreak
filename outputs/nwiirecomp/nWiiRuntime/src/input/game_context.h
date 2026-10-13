@@ -87,6 +87,21 @@ struct GameContext {
     bool carrying() const { return carried_profile >= 0; }
 };
 
+// A steady yaw leaves gravity unchanged, so the sensor's stillness detector
+// cannot distinguish a slow intentional turn from drift. Freeze automatic bias
+// learning while the game uses a pointing/steering reference. Inspect the raw
+// context: a visible cursor can make the UI translator classify flight as Menu.
+inline bool gyro_bias_learning_allowed(const GameContext& c) {
+    if (!c.valid) return true;
+    const bool aiming = (c.sword_states & kSwordFirstPerson) || (c.aim_flags & 0x5D7) ||
+                        c.cam_mode == 2 || c.cam_mode == 3 || c.cam_mode == 4 || c.cam_mode == 5 || c.cam_mode == 8;
+    const bool wheel = c.sword_states & (kSwordBWheelOpen | kSwordPouchOpen | kSwordCMenuOpen);
+    const bool steering = c.riding == 2 || (c.item_state == kItemBeetle && c.cam_handler == 6) ||
+                          (c.action_flags & (kActInWater | kActTightRope)) || c.action == 0x12 || c.action == 0x13;
+    const bool puzzle = c.prompt_slot[2] == 130 || c.prompt_slot[3] == 129;
+    return !(aiming || wheel || steering || puzzle || c.event() || c.carrying());
+}
+
 class GameContextChannel {
 public:
     void publish(const GameContext& c) {

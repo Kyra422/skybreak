@@ -1,4 +1,6 @@
 #include "runtime/ss_motion.h"
+#include "../input/game_context.h"
+#include "../input/gyro_calibration.h"
 #include "runtime/cpu_context.h"
 #include "input/input_source.h"
 #include "../input/virtual_motion.h"
@@ -275,19 +277,22 @@ bool ss_motion_read(CPUContext& ctx, int32_t channel, const input::MotionSample&
         ctx.mmu.read8(status+0x5D)==0;
     if (!c.available || sample.sequence==c.sequence) return false;
     if (c.sequence && (sample.sequence<c.sequence || sample.monotonic_ns<=c.timestamp)) return false;
-    // Synthetic stick/mouse rates have no sensor bias. KMPLS's hardware drift
-    // detector otherwise learns a held stick as zero, then moves in reverse on
-    // release. Preserve the original setting for measured sensors and on exit.
+    // A steady intentional turn can look still to both bias learners. Synthetic
+    // inputs have no hardware bias; measured inputs already use the producer's
+    // guided bias or must preserve the game's active steering reference. Freeze
+    // KMPLS learning in those cases too, restoring the game's setting on exit.
     // Offset 198 and channel stride 3504 are the original KMPLSReset/Read layout.
     struct DriftGuard {
         CPUContext& ctx; uint32_t address; uint8_t saved;
-        DriftGuard(CPUContext& c, uint32_t a, bool synthetic) : ctx(c), address(a), saved(c.mmu.read8(a)) {
-            if (synthetic) ctx.mmu.write8(address, 0);
+        DriftGuard(CPUContext& c, uint32_t a, bool freeze) : ctx(c), address(a), saved(c.mmu.read8(a)) {
+            if (freeze) ctx.mmu.write8(address, 0);
         }
         ~DriftGuard() { ctx.mmu.write8(address, saved); }
     } drift(ctx, state.memory.workarea + channel * 3504 + 198,
-            sample.kind == input::MotionSourceKind::Virtual && !sample.sensor_measured &&
-            !(std::getenv("NWII_VIRTUAL_ZERO_DRIFT") && std::getenv("NWII_VIRTUAL_ZERO_DRIFT")[0] == '0'));
+            (sample.kind == input::MotionSourceKind::Virtual && !sample.sensor_measured &&
+             !(std::getenv("NWII_VIRTUAL_ZERO_DRIFT") && std::getenv("NWII_VIRTUAL_ZERO_DRIFT")[0] == '0')) ||
+            (sample.sensor_measured && (!input::gyro_bias_learning_allowed(input::g_guest_context.get()) ||
+                                       input::calibration_status(channel).applied)));
     if (c.sequence && read_history(ctx,channel,c,sample,status)) return true;
     double dt=sample.dt_seconds;
     if (c.sequence) {

@@ -95,7 +95,7 @@ inline void correct_tilt(VirtualRemoteOrientation& o, const float accel[3], doub
 class GyroMotionTracker {
 public:
     bool auto_calibrate = true;
-    bool allow_bias_learning = true; // Freeze bias learning during intentional hybrid aim/puzzle motion.
+    bool allow_bias_learning = true; // Frozen while the game uses a pointing/steering reference.
     bool filter_aim = false; // Set by the context-aware source; three-axis puzzles stay physical.
     // [input] gyro_grip_tilt (radians): the far edge is raised this much when the pad is held "level".
     // The virtual remote is the pad turned by this angle nose-down about its X axis (one fixed rotation
@@ -115,8 +115,10 @@ public:
         window_reset();
         // The bias estimate belongs to the device and survives a mode toggle; reset_bias() clears it.
     }
-    void set_bias(const float v[3]) { std::copy(v,v+3,bias_);bias_valid_=true;window_reset();aim_filter_.reset(); }
-    void reset_bias() { bias_[0] = bias_[1] = bias_[2] = 0.0f; bias_valid_ = false; bias_updates = 0; }
+    // An explicitly applied still calibration is authoritative for this device.
+    // Background stillness guesses must not silently replace it with a slow turn.
+    void set_bias(const float v[3]) { std::copy(v,v+3,bias_);bias_valid_=true;bias_manual_=true;window_reset();aim_filter_.reset(); }
+    void reset_bias() { bias_[0] = bias_[1] = bias_[2] = 0.0f; bias_valid_ = bias_manual_ = false; bias_updates = 0; }
     // Drops queued samples (stalled producer: their interval cannot be delivered) but keeps the bias and
     // the last readings; the next sample starts a new time base.
     void discard() {
@@ -221,7 +223,7 @@ public:
             if (!(d[k] > 0)) continue;
             observe_still(s.gyro, s.accel, d[k]);
             float g[3] = {s.gyro[0], s.gyro[1], s.gyro[2]};
-            if (auto_calibrate && bias_valid_)
+            if (bias_valid_ && (auto_calibrate || bias_manual_))
                 for (int a = 0; a < 3; ++a) g[a] -= bias_[a];
             float rate[3], acc[3];
             controller_to_remote(g, rate);
@@ -306,10 +308,11 @@ private:
     // Still-controller gyro bias: a >= 1 s window where the gyro stays within 0.06 rad/s of the window
     // mean, the accelerometer reads 1 g (+-0.6 m/s^2) and does not move by more than 0.5 m/s^2. Window
     // means below 0.05 rad/s per axis (2.9 deg/s; SDL already applies the factory calibration) update the
-    // bias (first one directly, then halfway). A deliberate rotation changes the accelerometer (pitch/roll)
-    // or leaves the window; the original KMPLS zero-drift compensation works the same way.
+    // bias (first one directly, then halfway). Slow yaw does NOT change gravity:
+    // the source must freeze learning during reference-based controls. Guided
+    // calibration also freezes these guesses until the device is reconnected.
     void observe_still(const float g[3], const float a[3], double d) {
-        if (!auto_calibrate || !allow_bias_learning) { window_reset(); return; }
+        if (!auto_calibrate || !allow_bias_learning || bias_manual_) { window_reset(); return; }
         if (!(d > 0)) return;
         const double an = std::sqrt(double(a[0]) * a[0] + double(a[1]) * a[1] + double(a[2]) * a[2]);
         bool ok = std::fabs(an - kStandardGravity) < 0.6;
@@ -358,6 +361,7 @@ private:
     double nominal_period_ = 1.0 / 250.0;
     float bias_[3] = {0, 0, 0};
     bool bias_valid_ = false;
+    bool bias_manual_ = false;
     double win_time_ = 0, win_sum_[3] = {0, 0, 0};
     float win_accel0_[3] = {0, 0, 0};
 };

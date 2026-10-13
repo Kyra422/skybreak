@@ -92,7 +92,7 @@ namespace {
 namespace fs = std::filesystem;
 using runtime::Config;
 
-constexpr const char* kVersion = "0.22.0 Preview 2";
+constexpr const char* kVersion = "0.22.0 Preview 3";
 
 // ---------------------------------------------------------------------------------------- look
 const ImU32 kGold = IM_COL32(236, 200, 120, 255);
