@@ -85,6 +85,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check installer tool launches with missing Windows environment variables
+        run: python tests/test_build_tools.py
       - name: Check Windows Wii pairing without touching Bluetooth hardware
         shell: cmd
         run: |

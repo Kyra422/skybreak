@@ -17,6 +17,9 @@ game code.
 Extract the entire ZIP and run **SkyBreak-Setup.exe**. The playable game is built
 locally from your own supported disc; no original game files are included.
 
+If Setup stops during **Checking tools** with an empty-program-name error, see
+the [installer tool-launch fix](docs/INSTALLER_TOOL_LAUNCH_FIX.md).
+
 Alpha 3 includes gyro drift corrections, a controller-only adaptation of
 Aurora's sensor access, immediate button remapping, Loftwing tutorial/catch
 fixes, Timeshift depth rendering and interpolation improvements. See the
@@ -33,6 +36,8 @@ version and use English filenames.
 in-between frames. Gameplay remains at 30 Hz. Native 60/144-fps gameplay is not
 implemented. Performance varies by PC and scene. See
 [the timing investigation](docs/TRUE_144_FPS.md).
+The [interpolation performance investigation](docs/INTERPOLATION_PERFORMANCE.md)
+documents current costs and the limits of the first recorder optimization.
 
 Rendering, motion puzzles, cutscenes and later game areas still need community
 testing. Read [known limitations and reporting instructions](docs/COMMUNITY_TESTING.md).

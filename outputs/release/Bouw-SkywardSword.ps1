@@ -175,7 +175,20 @@ function Quote-Arg([string]$A, [switch]$Cmd) {
 }
 
 # Start een programma direct (zonder cmd.exe) en vangt de uitvoer op. Geeft @{Code; Uit; Fout} terug.
+function Zoek-Cmd {
+    # Some Windows installations do not expose ComSpec to Setup's child process.
+    # Use the operating system directory rather than relying on PATH in that case.
+    foreach ($pad in @($env:ComSpec, (Join-Path ([Environment]::SystemDirectory) 'cmd.exe'))) {
+        if ($pad -and (Test-Path -LiteralPath $pad -PathType Leaf)) { return $pad }
+    }
+    Fout 'Windows command processor (cmd.exe) was not found. Repair Windows, then try again.'
+}
+
 function Start-Direct([string]$Exe, [string[]]$Argumenten, [string]$Map = '') {
+    if ([string]::IsNullOrWhiteSpace($Exe)) {
+        Fout "No program was selected during '$script:HuidigeNaam'. Go back to Prerequisites and search again."
+    }
+    Write-Host "   Checking/running: $Exe"
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $Exe
     $psi.Arguments = (@($Argumenten) | ForEach-Object { Quote-Arg $_ }) -join ' '
@@ -184,7 +197,8 @@ function Start-Direct([string]$Exe, [string[]]$Argumenten, [string]$Map = '') {
     $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
     if ($Map) { $psi.WorkingDirectory = $Map }
-    $p = [System.Diagnostics.Process]::Start($psi)
+    try { $p = [System.Diagnostics.Process]::Start($psi) }
+    catch { Fout "Could not start '$Exe' during '$script:HuidigeNaam': $($_.Exception.Message)" }
     $uit = $p.StandardOutput.ReadToEndAsync()
     $err = $p.StandardError.ReadToEndAsync()
     $p.WaitForExit()
@@ -209,10 +223,11 @@ function Log-Staart([string]$Log, [int]$Regels = 25) {
 # Start een langlopend programma via cmd.exe met alle uitvoer naar $Log; toont voortgang ("[12/345]").
 # Het proces draait met lagere prioriteit, zodat de pc bruikbaar blijft.
 function Start-Gelogd([string]$Exe, [string[]]$Argumenten, [string]$Log, [string]$Titel, [string]$Map = '') {
+    if ([string]::IsNullOrWhiteSpace($Exe)) { Fout "No program was selected for '$Titel'. Go back to Prerequisites and search again." }
     Voortgang 'log' -Melding (Volledig-Pad $Log)
     $regel = (Quote-Arg $Exe -Cmd) + ' ' + ((@($Argumenten) | ForEach-Object { Quote-Arg $_ -Cmd }) -join ' ')  # REVINSTALL19: -Cmd
     $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = $env:ComSpec
+    $psi.FileName = Zoek-Cmd
     # REVINSTALL19 (continuation): console code page UTF-8 first. cl writes /showIncludes in the console code page and ninja reads
     # it as UTF-8: in a folder with an accented letter (a user name with a trema) every later build rebuilt everything; outside the
     # ANSI code page the second build failed ("ninja: error: FindFirstFileExA(...?...)"). Only this hidden console changes.
@@ -377,7 +392,7 @@ try {
         # Python 3.8+
         $script:PythonExe = Zoek-Exe $Python @('python.exe', 'python3.exe') @((Join-Path $projectRoot 'work\venv\Scripts\python.exe'))
         if (-not $script:PythonExe) {
-            $py = Get-Command py.exe -ErrorAction SilentlyContinue
+            $py = Get-Command py.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($py) { $r = Start-Direct $py.Source @('-3', '-c', 'import sys;print(sys.executable)'); if ($r.Code -eq 0) { $script:PythonExe = $r.Uit.Trim() } }
         }
         if (-not $script:PythonExe) { Fout 'Python 3 not found. Install Python 3.10 or later (python.org), or use -Python <path\python.exe>.' }
@@ -392,7 +407,7 @@ try {
         $vsPad = ($r.Uit -split "`r?`n" | Where-Object { $_ } | Select-Object -First 1)
         if (-not $vsPad) { Fout 'Visual Studio has no C++ compiler (MSVC x64). Add "Desktop development with C++" using Visual Studio Installer.' }
         $vsDev = Join-Path $vsPad 'Common7\Tools\VsDevCmd.bat'
-        $r = Start-Direct $env:ComSpec @('/d', '/c', 'call', $vsDev, '-arch=amd64', '-host_arch=amd64', '-no_logo', '>nul', '2>&1', '&&', 'set')
+        $r = Start-Direct (Zoek-Cmd) @('/d', '/c', 'call', $vsDev, '-arch=amd64', '-host_arch=amd64', '-no_logo', '>nul', '2>&1', '&&', 'set')
         if ($r.Code -ne 0) { Fout "VsDevCmd.bat failed ($vsDev)." }
         foreach ($l in ($r.Uit -split "`r?`n")) {
             $i = $l.IndexOf('=')

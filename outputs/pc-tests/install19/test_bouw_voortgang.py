@@ -50,7 +50,7 @@ VSDEV = Path(r'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\T
 def start_gelogd_twice(script_src, tag):
     # REVINSTALL19 continuation (B6): the REAL Start-Gelogd (+ Quote-Arg, Log-Staart) from the build script runs configure, build,
     # build again, touch header, build; paths go in through the environment (a .ps1 without BOM is read in the ANSI code page)
-    fns = '\n'.join(re.search(r'(?ms)^function ' + n + r'\b.*?^\}', script_src).group(0) for n in ('Quote-Arg', 'Log-Staart', 'Start-Gelogd'))
+    fns = '\n'.join(re.search(r'(?ms)^function ' + n + r'\b.*?^\}', script_src).group(0) for n in ('Quote-Arg', 'Zoek-Cmd', 'Log-Staart', 'Start-Gelogd'))
     base = TMP / f'Zoë 日 (x), t {tag}'
     srcd, bld, log = base / 'bron', base / 'bouw map', base / 'bouw.log'
     (srcd / 'inc').mkdir(parents=True, exist_ok=True)

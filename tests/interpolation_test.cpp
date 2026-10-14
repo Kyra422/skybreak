@@ -655,6 +655,41 @@ int main(int argc, char **argv) {
     Interp(A,B,P,cfg,20,&ov);
     Check(ov.vlerp,"C8","indexed geometry retains vertex interpolation");
   }
+  { // Repeated state writes retain per-draw values without duplicate history.
+    Frame f;
+    const auto live = [&] {
+      GXCommand c{}; c.type = GXCommandType::DrawPrimitive; c.prim_type = 0x90;
+      f.cmds.push_back(c); f.raws.push_back(nullptr);
+    };
+    live();
+    for (int i = 0; i < 1000; ++i) { f.cmds.push_back(BP(0xE0, 0)); live(); }
+    f.cmds.push_back(BP(0xE0, 123)); live();
+    f.cmds.push_back(BP(0xE0, 123)); live();
+    f.cmds.push_back(BP(0xE0, 0)); live();
+    f.cmds.push_back(XF(0, {-0.0f})); live();
+    uint32_t nanbits = 0x7fc01234; float nan;
+    std::memcpy(&nan, &nanbits, 4);
+    f.cmds.push_back(XF(0, {nan})); live();
+    f.cmds.push_back(XF(0, {nan})); live();
+    Record(f, 1);
+    bool ok = true;
+    for (size_t i = 0; i < f.rec.draws.size(); ++i) {
+      uint32_t color = 0;
+      std::memcpy(&color, f.rec.AtFixed(ip::kRegTev, f.rec.draws[i].seq), 4);
+      ok &= color == ((i == 1001 || i == 1002) ? 123u : 0u);
+    }
+    Check(ok, "H1", "duplicate writes and value reversions preserve every draw's colour");
+    Check(f.rec.hist[ip::kRegTev].size() == 3 && f.rec.hist[ip::kRegNrm].size() == 1,
+          "H2", "unchanged colours and live matrix rows reuse history storage");
+    uint32_t zbits = 0, nbits = 0;
+    std::memcpy(&zbits, f.rec.AtFixed(ip::kRegPos, f.rec.draws[1004].seq), 4);
+    std::memcpy(&nbits, f.rec.AtFixed(ip::kRegPos, f.rec.draws.back().seq), 4);
+    Check(zbits == 0x80000000 && nbits == nanbits && f.rec.hist[ip::kRegPos].size() == 3,
+          "H3", "history retains signed zero and exact NaN payloads");
+    Record(f, 2);
+    Check(f.rec.hist[ip::kRegTev].size() == 3 && f.rec.frame == 2,
+          "H4", "history reuse starts from the new frame's base state");
+  }
   std::printf("RESULT pass=%d fail=%d\n", g_pass, g_fail);
   return g_fail ? 1 : 0;
 }

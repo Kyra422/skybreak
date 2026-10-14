@@ -394,16 +394,22 @@ inline void RecordFrame(const std::vector<GXCommand> &frame, const std::vector<s
   int ntouched = 0;
   uint32_t cmd_id = 1;
   const auto push = [&](int r, uint32_t seq) {
-    const uint32_t off = (uint32_t)R.pool.size();
     const int n = RegFloats(r);
+    const void *src = r < kRegNrm ? static_cast<const void *>(&s.pos[r * 4])
+                    : r < kRegLight ? static_cast<const void *>(&s.nrm[(r - kRegNrm) * 3])
+                    : r < kRegProj ? static_cast<const void *>(&s.lights[(r - kRegLight) * 16])
+                    : r == kRegProj ? static_cast<const void *>(s.proj)
+                    : r == kRegXfCol ? static_cast<const void *>(&s.xf[0x0A])
+                    : static_cast<const void *>(s.tev);
+    // Repeated register writes and unchanged live matrix rows do not create a
+    // new value. Keep the previous version until the bytes actually change;
+    // all per-draw sequence queries still observe the same contents. Compare
+    // raw bytes to retain signed zero, NaN payloads and packed colour words.
+    const size_t bytes = (size_t)n * sizeof(float);
+    if (!R.hist[r].empty() && std::memcmp(&R.pool[R.hist[r].back().off], src, bytes) == 0) return;
+    const uint32_t off = (uint32_t)R.pool.size();
     R.pool.resize(off + (size_t)n);
-    float *dst = &R.pool[off];
-    if (r < kRegNrm) std::memcpy(dst, &s.pos[r * 4], 16);
-    else if (r < kRegLight) std::memcpy(dst, &s.nrm[(r - kRegNrm) * 3], 12);
-    else if (r < kRegProj) std::memcpy(dst, &s.lights[(r - kRegLight) * 16], 64);
-    else if (r == kRegProj) std::memcpy(dst, s.proj, 28);
-    else if (r == kRegXfCol) std::memcpy(dst, &s.xf[0x0A], 16);
-    else std::memcpy(dst, s.tev, 64);
+    std::memcpy(&R.pool[off], src, bytes);
     R.hist[r].push_back({seq, off});
   };
   const auto touch = [&](int r) {
