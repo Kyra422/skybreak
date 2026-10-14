@@ -3,6 +3,9 @@
 # (nWiiRuntime/src/ui/ui_disc.cpp: disc SHA-1 check, ui_wic.cpp: PNG via Windows Imaging Component).
 # Static CRT (/MT): runs on a clean Windows 10/11 PC without the VC++ redistributable.
 cmake_minimum_required(VERSION 3.20)
+# Compile Windows resources directly. Some pip CMake/VS combinations omit the
+# cmcldeps executable and produce an invalid RC wrapper command in Ninja.
+set(CMAKE_NINJA_CMCLDEPS_RC OFF)
 project(SkyBreakSetup LANGUAGES C CXX RC)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -43,6 +46,8 @@ function(sb_rc target desc with_logo)
   endif()
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/res/app.rc.in" "${CMAKE_CURRENT_BINARY_DIR}/${target}.rc" @ONLY)
   target_sources(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/${target}.rc" "${CMAKE_CURRENT_SOURCE_DIR}/res/app.manifest")
+  set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/${target}.rc" PROPERTIES
+    OBJECT_DEPENDS "${SB_BRANDING_DIR}/skybreak.ico;${SB_BRANDING_DIR}/skybreak-logo-512.png;${CMAKE_CURRENT_SOURCE_DIR}/res/app.manifest")
 endfunction()
 
 # --- core library (also linked by the unit tests in outputs/pc-tests/install19)
