@@ -1,0 +1,9 @@
+// LAUNCH19: SkyBreak branding in the game exe (our own artwork, outputs/branding: distributable): the Explorer /
+// taskbar icon and the wing PNG the launcher draws (ui_app.cpp LoadEmbeddedLogo, also the SDL window icon).
+// configure_file() in the runtime CMakeLists.txt writes skybreak.rc with absolute paths; the exe gets it through
+// target_sources(nwiiruntime INTERFACE ...).
+// REL22: the paths below are written by configure_file() as UTF-8; without this pragma rc.exe reads them in the ANSI code
+// page and an install folder with an accent or a non-Latin character ("file not found") stops the build.
+#pragma code_page(65001)
+1 ICON "@SKYBREAK_RES_DIR@/skybreak.ico"
+SKYBREAK_LOGO RCDATA "@SKYBREAK_RES_DIR@/skybreak-logo-512.png"

@@ -1,21 +1,13 @@
-# Assets, distribution, and licensing
+# Source and asset policy
 
-## Bring your own game
+The repository contains source, tools and independently authored branding/
+controller stencils. It contains no original game, saves, fitted game textures,
+model mods, generated game C++ or playable game executable. These remain local.
 
-**Skybreak does not distribute game assets. Playing a future playable build requires your own legally obtained copy of Skyward Sword and the necessary files supplied from that copy.** The project does not supply disc images, original game executables, extracted content, or links to unauthorized copies.
-
-Game files stay local. This applies to source trees, Git history, LFS, CI caches and artifacts, issue/PR attachments, releases, installers, and download bundles. An installer must not silently fetch original game data.
-
-## Independent project
-
-Skybreak is an unofficial independent development project. It is not affiliated with or endorsed by Nintendo, ZeldaRET, or Dusklight. Original game content and trademarks remain with their respective rights holders.
-
-## Decompilation and native port
-
-Decompilation reconstructs source for an original target. A native port requires platform work and validation beyond that reconstruction. This project must not equate upstream matching progress with a playable native release.
-
-## Source licensing
-
-This documentation starter does not establish a project-wide source license. Before publishing integrated code, determine the applicable terms for each source component and dependency, preserve notices, and document the resulting license scope. Do not apply a blanket MIT, CC0, or other license to material without the necessary rights.
-
-No license for original game assets is granted. Excluding assets and requiring an owned copy are project distribution rules, not a guarantee about the legal status of every implementation, extraction method, or jurisdiction.
+Integrated NWiiRecomp-derived source is distributed under the preserved
+outputs/nwiirecomp/LICENSE (modified license with non-commercial restrictions
+and required attribution). Dependencies retain their own source licenses and
+notices. This is not a blanket MIT license. No license for original game assets
+is granted. Keep original game content and locally translated code out of Git,
+LFS, CI artifacts and releases. The packager performs game-data and console-data
+checks; excluding assets is a distribution policy, not a legal guarantee.

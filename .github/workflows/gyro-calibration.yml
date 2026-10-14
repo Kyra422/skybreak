@@ -1,0 +1,99 @@
+name: Source regressions
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  calibration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile source-only sensor regression
+        run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_calibration_test.cpp -o /tmp/gyro-test
+      - name: Run
+        run: /tmp/gyro-test
+      - name: Compile source-only interpolation regression
+        run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/include tests/interpolation_test.cpp -o /tmp/interpolation-test
+      - name: Check camera, particle matching and frame pacing
+        run: /tmp/interpolation-test
+      - name: Compile gyro aim filtering regression
+        run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_aim_filter_test.cpp -o /tmp/gyro-aim-test
+      - name: Check idle drift, slow aim and sensor timing
+        run: /tmp/gyro-aim-test
+      - name: Compile steering calibration regression
+        run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_bias_test.cpp -o /tmp/gyro-bias-test
+      - name: Check slow steering, guided calibration and reconnects
+        run: /tmp/gyro-bias-test
+      - name: Compile gyro drift transition regression
+        run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_drift_test.cpp -o /tmp/gyro-drift-test
+      - name: Check ordinary play, idle drift, stalled sensors and calibrated precision
+        run: /tmp/gyro-drift-test
+      - name: Compile tutorial message regression
+        run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/message_context_test.cpp -o /tmp/message-test
+      - name: Check tutorial confirmation, passive overlays and safe observation
+        run: /tmp/message-test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate fresh installer settings
+        run: python tests/test_default_settings.py
+  buttons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install source-only input test headers
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libtomlplusplus-dev
+      - name: Compile Aurora sensor adapter regression
+        run: g++ -std=c++20 -O2 -pthread -DSDL_MAIN_HANDLED -I/usr/include/SDL2 -Ioutputs/nwiirecomp/nWiiRuntime/src tests/aurora_sensor_test.cpp -o /tmp/aurora-sensor-test
+      - name: Check sensor success, failures, retries and stale reads
+        run: /tmp/aurora-sensor-test
+      - name: Compile production button mapping regression
+        run: >-
+          g++ -std=c++20 -O2 -pthread -I/usr/include/SDL2
+          -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include
+          tests/button_mapping_test.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/input_manager.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/sources/gamepad_source.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/sources/mouse_keyboard_source.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/core/config.cpp -o /tmp/button-test
+      - name: Check mapping, layout selection, calibration and sensor timing
+        run: /tmp/button-test
+      - name: Compile Wii Remote production regression
+        run: >-
+          g++ -std=c++20 -O2 -pthread -DSDL_MAIN_HANDLED -I/usr/include/SDL2
+          -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include
+          tests/wii_remote_test.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/input_manager.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/sources/gamepad_source.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/sources/mouse_keyboard_source.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/core/config.cpp -o /tmp/wii-test
+      - name: Check native Wii buttons, MotionPlus timing, Nunchuk and reconnects
+        run: /tmp/wii-test
+      - name: Compile experimental co-op context regression
+        run: g++ -std=c++20 -O2 -Ioutputs/nwiirecomp/nWiiRuntime/src tests/player_context_test.cpp -o /tmp/player-context-test
+      - name: Check player state isolation, failure rollback and restoration
+        run: /tmp/player-context-test
+      - name: Extract Wii IR production driver regression
+        run: python3 tests/make_wii_ir_test.py /tmp/wii-ir-test.cpp
+      - name: Compile Wii IR production driver regression
+        run: >-
+          g++ -std=c++20 -O2 -DSDL_MAIN_HANDLED -I/usr/include/SDL2
+          -Iwork/nwii-build/_deps/sdl2-src/src/joystick/hidapi
+          /tmp/wii-ir-test.cpp -o /tmp/wii-ir-test
+      - name: Check report 37, real acceleration, infrared dots and initialization failures
+        run: /tmp/wii-ir-test
+  pairing-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check installer tool launches with missing Windows environment variables
+        run: python tests/test_build_tools.py
+      - name: Check Windows Wii pairing without touching Bluetooth hardware
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do call "%%i\Common7\Tools\VsDevCmd.bat" -arch=amd64 -host_arch=amd64
+          cl /nologo /EHsc /std:c++20 /Ioutputs/nwiirecomp/nWiiRuntime/src tests/wii_pairing_test.cpp /Fewii-pairing-test.exe
+          if errorlevel 1 exit /b 1
+          wii-pairing-test.exe

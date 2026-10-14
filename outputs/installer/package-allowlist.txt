@@ -1,0 +1,56 @@
+# INSTALL19 allow-list for the SkyBreak package (bron/ = sources the player's PC builds from).
+# Only what is listed here is copied; never "everything except". New directories from other tracks must be added on purpose
+# (and must pass legal_scan.py). Paths are relative to the project root, forward slashes.
+#   dir <path>      whole directory (minus the exclude patterns)
+#   file <path>     one file
+#   exclude <glob>  fnmatch against the project-relative path
+#
+# NWiiRecomp (translator + runtime), licence: outputs/nwiirecomp/LICENSE (non-commercial, attribution, no AI training)
+dir outputs/nwiirecomp/nWiiRecomp
+dir outputs/nwiirecomp/nWiiRuntime
+dir outputs/nwiirecomp/nWiiAnalyzer
+dir outputs/nwiirecomp/third_party
+file outputs/nwiirecomp/CMakeLists.txt
+file outputs/nwiirecomp/LICENSE
+# SkyBreak profile for the generator (symbol names/addresses, no game data)
+file outputs/pc-profile/recomp_config.toml
+file outputs/pc-profile/symbols.csv
+# build pipeline (our scripts)
+file outputs/release/Bouw-SkywardSword.ps1
+file outputs/release/README.md
+dir outputs/release/tools
+dir outputs/release/sjablonen
+# decomp configuration (CC0): symbols, splits, expected hashes - no game data
+dir outputs/skyward-sword/config/SOUE01
+file outputs/skyward-sword/LICENSE
+# freeze detector symbol table (names + addresses)
+file outputs/pc-tests/freeze8/freeze_symbols.txt
+# vendored open-source libraries: SDL2 (zlib), toml++ (MIT), Dear ImGui (MIT)
+dir work/nwii-build/_deps/sdl2-src
+dir work/nwii-build/_deps/tomlplusplus-src
+dir work/nwii-build/_deps/imgui-src
+# REL22: button icons. Only the Kenney "Input Prompts" pictures (CC0, recoloured; stencils/ + recipe.json, made from the Kenney
+# pack alone) and our generator ship; glyph_local.py fits them on the player's PC to the button pictures of THEIR disc
+# (Bouw-SkywardSword.ps1 step 8 -> <install>\textures\glyphs). gx_texture.py = our GX decoder (no data).
+file outputs/pc-tools/glyphs/glyph_local.py
+file outputs/pc-tools/glyphs/make_glyph_stencils.py
+file outputs/pc-tools/glyphs/make_glyph_sets.py
+dir outputs/pc-tools/glyphs/stencils
+file outputs/pc-tools/hdtex/gx_texture.py
+# MODS24: asset-only mod authoring tools and format documentation, no game assets.
+dir outputs/pc-tools/mods
+# the installer itself (our code) + SkyBreak branding (the user's own logo)
+dir outputs/installer
+file outputs/branding/skybreak.ico
+file outputs/branding/skybreak-logo-512.png
+
+exclude */.git/*
+exclude */.github/*
+exclude */__pycache__/*
+exclude *.pyc
+exclude outputs/nwiirecomp/nWiiStudio/*
+exclude outputs/installer/build/*
+exclude */.vs/*
+# Dear ImGui examples (not needed for the build; contain prebuilt GLFW .lib files)
+exclude work/nwii-build/_deps/imgui-src/examples/*
+exclude *.user

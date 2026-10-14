@@ -1,8 +1,15 @@
 # Status and evidence
 
-Documentation prepared: 2026-10-05. Actual native implementation inspected: none during preparation of this starter.
+Current evidence, 2026-10-14: [Alpha 3](RELEASE_0.23.0_ALPHA3.md) is published with
+Windows installer and input/motion regressions passing. The newer
+[Wii Remote preview](WII_REMOTE_PREVIEW.md) built and loaded a private save;
+physical controller testing is pending. [Online co-op](ONLINE_COOP_RESEARCH.md)
+has an inactive player-context prototype and is not playable.
 
-The previous setup helper and repository launch materials do not prove a working native port. Unknown status does not mean no work has been done; it means evidence is still needed here.
+The table below is the original 2026-10-05 starter audit. Consult the linked
+milestone reports for later verification and its limits.
+
+The original starter table did not assess native playability.
 
 | Area | Recorded status | Evidence needed |
 |---|---|---|

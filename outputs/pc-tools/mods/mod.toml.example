@@ -1,0 +1,7 @@
+schema = 1
+id = "my-mod"
+name = "My mod"
+game = "SOUE01"
+version = "1.0"
+author = ""
+description = "Replace this description and add compatible assets."

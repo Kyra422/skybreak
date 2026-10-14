@@ -1,0 +1,16 @@
+SkyBreak — community alpha
+
+Start SkyBreak.exe, or use Speel.cmd for the command-line launcher.
+F1: pause menu/settings. F8: capture a problem report. F12: screenshot.
+Choose your controller layout in Settings > Controls. For physical gyro,
+open Calibrate gyro, rest the controller on a stable surface, and apply the
+measurement. Calibration lasts for the current controller connection/session.
+
+First test without mods. Keep your NAND/save folder backed up. The runtime is
+experimental; rendering, motion puzzles and later game areas may have issues.
+Gameplay currently runs at 30 Hz. Optional interpolation is experimental.
+Native 144 fps is not available in this tester release.
+
+Read COMMUNITY-TESTING.md in the installer package before reporting issues.
+Your own SOUE01 Wii USA 1.0 game is required. Do not redistribute game files,
+locally generated code, game executables, saves, or copyrighted mod assets.

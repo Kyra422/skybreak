@@ -1,15 +1,20 @@
-# Building Skybreak
+# Building SkyBreak
 
-This starter has no native runtime source or verified native build procedure. Build instructions will be added from the actual implementation.
+See the repository README for the installer-package build. The setup takes your
+own SOUE01 disc image or extracted game folder and runs
+`outputs/release/Bouw-SkywardSword.ps1` on your PC. No original game data is
+included. The script checks the game revision, translates DOL/REL code and builds
+the native executable locally. Building the setup stubs does not build the game.
 
-Before documenting a supported platform, verify:
+For a standalone calibration regression, open an x64 Visual Studio developer
+prompt from this repository root:
 
-- OS and architecture; compiler, SDK, build-system, and dependency versions.
-- Dependency fetch locations and pinned revisions.
-- Exact configure, build, and launch commands from a clean checkout.
-- Which output is a native PC executable and where it is placed.
-- User-provided data format, revision validation, and local file location.
-- No-data startup, incorrect-data failure, and one reproducible successful run.
-- Known limitations and checks that were not run.
+```text
+cl /EHsc /std:c++20 /O2 /Ioutputs/nwiirecomp/nWiiRuntime/src /Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_calibration_test.cpp /Fe:gyro-test.exe
+gyro-test.exe
+```
 
-The upstream research target is Wii `SOUE01`. Its reconstruction uses original local `sys/main.dol` and `files/rels.arc`; those two inputs are not a promised complete asset set for the native port. Never publish them or substitute upstream `configure.py`/`ninja` steps for unverified Skybreak PC instructions.
+Do not commit local build artifacts, generated game code or game files. The
+packager reports checksums and rejects known game/console data. Full package
+install/resume/update/uninstall validation uses an isolated local test folder;
+this is not proof of compatibility on every fresh Windows machine.
