@@ -113,6 +113,16 @@ public:
       DropHistory(free_fn);
       return;
     }
+    // Skip preparation too: omitting only the extra render still pays for
+    // RecordFrame/MakePlan. Fresh adjacent history is collected after the pause.
+    if (gx::InterpPreparationCoolingDown(now, budget_skip_until_us_,
+          nwii::runtime::FrameInterpMode() == nwii::runtime::kInterpRerender, force_)) {
+      DropHistory(free_fn);
+      info_.paced = false;
+      t_before_n_us_ = 0;
+      ++win_.cooldown;
+      return;
+    }
     if (!announced_) {
       announced_ = true;
       // started on first use: no threads while the option is off. A small pool hashes the draws and plans
@@ -211,7 +221,7 @@ public:
     } else if (!force_ && w1 < budget_skip_until_us_) why = "budget";
     else if (!force_ && !budget_trial_ && ema_ri_us_ &&
              (w1 - info_.t_cut_us) + MaxOf(ri_hist_) + MaxOf(rn_hist_) >
-                 (info_.period_us * budget_percent_) / 100) {
+                 gx::InterpWorkBudgetUs(info_.period_us, budget_percent_)) {
       // (the second-slowest of the last 8 measured renders: a frame over the budget would merge (lose) the next)
       // both renders would not fit in the guest frame: the next frame would be merged (lost). Show this one
       // for two periods instead; a short pause is enough for a small spike.
@@ -219,8 +229,8 @@ public:
       why = "budget";
       // ri_hist_ includes PrepareAll and render together; do not charge preparation twice.
       const int64_t predicted = (w1 - info_.t_cut_us) + MaxOf(ri_hist_) + MaxOf(rn_hist_);
-      const int64_t overload = std::max<int64_t>(0, predicted - info_.period_us);
-      const int64_t retry = std::min<int64_t>(500000, budget_retry_us_ + overload * 8);
+      const int64_t overload = std::max<int64_t>(0, predicted - gx::InterpWorkPeriodUs(info_.period_us));
+      const int64_t retry = gx::InterpRetryDelayUs(overload, budget_retry_us_);
       budget_skip_until_us_ = w1 + retry;
       budget_trial_ = true;
       ++win_.budget_trips;
@@ -325,6 +335,17 @@ public:
       warp_this_ = false;
       Warp(frame);
     }
+    // Preparation alone or a slow first trial can exceed the allowance before
+    // the extra-render prediction runs. Back off for those frames as well.
+    const int64_t work_done = gx::InterpNowUs();
+    if (!force_ && nwii::runtime::FrameInterpMode() == nwii::runtime::kInterpRerender &&
+        work_done - info_.t_cut_us > gx::InterpWorkBudgetUs(info_.period_us, budget_percent_)) {
+      const int64_t overload = work_done - info_.t_cut_us - gx::InterpWorkPeriodUs(info_.period_us);
+      budget_skip_until_us_ = std::max(budget_skip_until_us_,
+          work_done + gx::InterpRetryDelayUs(overload, budget_retry_us_));
+      budget_trial_ = true;
+      ++win_.budget_trips;
+    }
     win_.host_us += (uint64_t)(gx::InterpNowUs() - info_.t_cut_us);
     if (ShotFrame(job_no_) && info_.had_interp) Shot("b");
     if (prev_valid_) free_fn(std::move(prev_cmds_));
@@ -386,12 +407,12 @@ public:
     const double n = (double)win_.frames;
     std::snprintf(line, sizeof line,
                   "[INTERP17] frames=%llu interp=%llu dup=%llu skipped: cut=%llu behind=%llu budget=%llu nohist=%llu "
-                  "unpaced=%llu | match3d=%.1f%% match2d=%.1f%% static=%.0f%% | ms/frame record=%.2f plan=%.2f "
+                  "unpaced=%llu cooldown=%llu | match3d=%.1f%% match2d=%.1f%% static=%.0f%% | ms/frame record=%.2f plan=%.2f "
                   "wait=%.2f render_I=%.2f render_N=%.2f host=%.2f | P=%.1fms budget_trips=%llu shadow_copies=%llu "
                   "stale_reads=%llu I_skipped_draws=%llu last_cut=\"%s\"%s",
                   (unsigned long long)win_.frames, (unsigned long long)win_.interp, (unsigned long long)win_.dup,
                   (unsigned long long)win_.cut, (unsigned long long)win_.behind, (unsigned long long)win_.budget,
-                  (unsigned long long)win_.nohist, (unsigned long long)win_.unpaced,
+                  (unsigned long long)win_.nohist, (unsigned long long)win_.unpaced, (unsigned long long)win_.cooldown,
                   win_.b_persp ? 100.0 * win_.persp_matched / win_.b_persp : 0.0,
                   win_.b_ortho ? 100.0 * win_.ortho_matched / win_.b_ortho : 0.0,
                   win_.interp_draws ? 100.0 * win_.static_draws / win_.interp_draws : 0.0, win_.rec_us / n / 1000.0,
@@ -666,7 +687,7 @@ private:
   }
 
   struct Window {
-    uint64_t frames = 0, interp = 0, dup = 0, cut = 0, behind = 0, budget = 0, nohist = 0, unpaced = 0;
+    uint64_t frames = 0, interp = 0, dup = 0, cut = 0, behind = 0, budget = 0, nohist = 0, unpaced = 0, cooldown = 0;
     uint64_t rec_us = 0, plan_us = 0, wait_us = 0, ri_us = 0, rn_us = 0, host_us = 0, budget_trips = 0;
     uint64_t pre_us = 0, post_us = 0; // NWII_INTERP_PROFILE
     uint64_t prep_us = 0;             // parallel per-draw preparation before the walk

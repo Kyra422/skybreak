@@ -197,6 +197,22 @@ inline bool DropLatePresent(int64_t now, int64_t target, int64_t composition_per
   return queued > 0 && now > target + std::max<int64_t>(1000, composition_period);
 }
 
+// Optional interpolation work must not gain a larger allowance when overload
+// slows the 30-Hz game. Presentation timing still follows the measured cadence.
+inline int64_t InterpWorkPeriodUs(int64_t measured_period) {
+  return std::clamp<int64_t>(measured_period, 1000, 33367);
+}
+inline int64_t InterpWorkBudgetUs(int64_t measured_period, int percent) {
+  return InterpWorkPeriodUs(measured_period) * std::clamp(percent, 75, 95) / 100;
+}
+inline int64_t InterpRetryDelayUs(int64_t overload, int64_t minimum) {
+  minimum = std::clamp<int64_t>(minimum, 100000, 500000);
+  return minimum + std::min<int64_t>(500000 - minimum, std::clamp<int64_t>(overload, 0, 500000) * 8);
+}
+inline bool InterpPreparationCoolingDown(int64_t now, int64_t until, bool rerender, bool forced) {
+  return rerender && !forced && now < until;
+}
+
 class PacePlanner {
 public:
   // kind 1 = in-between frame, 2 = real frame; ready = when its image was complete.

@@ -690,6 +690,24 @@ int main(int argc, char **argv) {
     Check(f.rec.hist[ip::kRegTev].size() == 3 && f.rec.frame == 2,
           "H4", "history reuse starts from the new frame's base state");
   }
+  {
+    Check(gx::InterpWorkBudgetUs(50000,95)==31698 && gx::InterpWorkBudgetUs(33367,95)==31698,
+          "B1", "a slowdown to 20 fps cannot enlarge the optional-work allowance");
+    Check(gx::InterpWorkBudgetUs(16667,95)==15833,
+          "B2", "faster game cadence retains its smaller work budget");
+    Check(gx::InterpWorkBudgetUs(33367,0)==25025 && gx::InterpWorkBudgetUs(33367,100)==31698,
+          "B3", "work-budget percentages stay within supported bounds");
+    Check(gx::InterpPreparationCoolingDown(1000,2000,true,false) &&
+          !gx::InterpPreparationCoolingDown(2000,2000,true,false),
+          "B4", "preparation is skipped until the retry deadline, then allowed again");
+    Check(!gx::InterpPreparationCoolingDown(1000,2000,false,false) &&
+          !gx::InterpPreparationCoolingDown(1000,2000,true,true),
+          "B5", "other interpolation modes and explicit forced tests retain their behavior");
+    Check(gx::InterpRetryDelayUs(-10,133333)==133333 &&
+          gx::InterpRetryDelayUs(10000,133333)==213333 &&
+          gx::InterpRetryDelayUs(INT64_MAX,133333)==500000,
+          "B6", "retry backoff is bounded and cannot overflow on a large stall");
+  }
   std::printf("RESULT pass=%d fail=%d\n", g_pass, g_fail);
   return g_fail ? 1 : 0;
 }
