@@ -27,6 +27,9 @@ struct PadSnapshot {
     uint32_t generation = 0;    // changes whenever another device (or the same one again) fills this slot
     uint32_t buttons = 0;       // bit b = SDL_GameControllerButton b held
     int16_t axes[kPadAxisCount] = {};
+    bool wii_remote = false, has_nunchuk = false;
+    bool ir_supported=false, ir_valid=false;
+    float ir_x=0.5f, ir_y=0.5f, ir_horizon_x=1.0f, ir_horizon_y=0.0f;
     bool has_gyro = false, has_accel = false;
     bool gyro_data_ok = false;  // legacy pointer modes 3/4: newest gyro value (SDL_GameControllerGetSensorData)
     float gyro_data[3] = {0, 0, 0};
@@ -89,9 +92,14 @@ inline uint64_t pad_now_ms() {
         std::chrono::steady_clock::now().time_since_epoch()).count());
 }
 
+inline constexpr int kWiiRemotePadType = 100; // Host-only type; never passed to SDL.
+inline std::atomic<bool> g_wii_remote_active[4];
+inline std::atomic<bool> g_wii_sensorbar_visible[4];
+
 // SDL_GameControllerType (SDL 2.28 numbering) -> short name for logs and the UI.
 inline const char* pad_type_name(int type) {
     switch (type) {
+    case kWiiRemotePadType: return "Wii Remote";
     case 1: case 2: return "Xbox";
     case 3: return "PS3";
     case 4: return "PS4";

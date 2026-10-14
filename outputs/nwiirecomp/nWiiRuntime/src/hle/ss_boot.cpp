@@ -261,6 +261,18 @@ void publish_replay_title_phase(CPUContext& ctx) {
 // channel-0 read. Addresses: see game_context.h. NWII_CTRL18_CONTEXT=0 publishes nothing (A/B: the translator then
 // treats everything as plain play / the live atomics).
 static void publish_game_context(CPUContext& ctx, uint32_t link, bool link_ok, bool title) {
+    // Opt-in co-op feasibility observation. Never creates actors, changes the
+    // active player/controller, writes saves, or enables networking.
+    static const bool coop_audit=[] { const char* e=std::getenv("NWII_COOP_AUDIT");return e && e[0]=='1'; }();
+    static uint32_t audit_previous=0;static unsigned audit_frames=0;
+    if(coop_audit && link_ok && !title && (link!=audit_previous || ++audit_frames%300==0)) {
+        audit_previous=link;
+        const uint32_t link2=ctx.mmu.read32(0x805757B8);
+        const uint32_t current_pad=ctx.mmu.read32(0x80571C60);
+        const uint32_t current_channel=ctx.mmu.read32(0x80575C54);
+        std::printf("[Co-op audit] Link=%08x Link2=%08x same_actor=%d current_pad=%08x current_channel=%u; networking=disabled\n",
+                    unsigned(link),unsigned(link2),int(link2==link),unsigned(current_pad),unsigned(current_channel));
+    }
     static const bool on = [] { const char* e = std::getenv("NWII_CTRL18_CONTEXT"); return !(e && e[0] == '0'); }();
     if (!on) return;
     const auto valid = [](uint32_t p, uint32_t size) {
@@ -1371,7 +1383,8 @@ void SS_KPADReadEx(CPUContext& ctx) {
     if (valid_pointer) {
         ctx.mmu.write_f32(samples + 0x20, state.ir_x * 2.0f - 1.0f);
         ctx.mmu.write_f32(samples + 0x24, 1.0f - state.ir_y * 2.0f);
-        ctx.mmu.write_f32(samples + 0x34, 1.0f);
+        ctx.mmu.write_f32(samples + 0x34, state.ir_horizon_x);
+        ctx.mmu.write_f32(samples + 0x38, state.ir_horizon_y);
     }
     ctx.mmu.write8(samples + 0x5E, valid_pointer ? 2 : 0);
     // WPAD_FMT_FREESTYLE_BTN_ACC_DPD = 5; core BTN_ACC_DPD = 2.

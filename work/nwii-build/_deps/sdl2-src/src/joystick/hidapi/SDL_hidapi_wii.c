@@ -32,6 +32,8 @@
 #include "SDL_hidapijoystick_c.h"
 #include "SDL_hidapi_rumble.h"
 #include "SDL_hidapi_nintendo.h"
+/* SkyBreak altered SDL 2.28.5: real IR and absent-accelerometer guard. */
+#include "SDL_hidapi_wii_ir.h"
 
 #ifdef SDL_JOYSTICK_HIDAPI_WII
 
@@ -146,6 +148,8 @@ typedef struct
     SDL_bool m_bMotionPlusPresent;
     Uint8 m_ucMotionPlusMode;
     SDL_bool m_bReportSensors;
+    SDL_bool m_bSkyBreakIR;
+    Uint16 m_unIRSerial;
     Uint8 m_rgucReadBuffer[k_unWiiPacketDataLength];
     Uint32 m_unLastInput;
     Uint32 m_unLastStatus;
@@ -538,6 +542,10 @@ static void UpdatePowerLevelWiiU(SDL_Joystick *joystick, Uint8 extensionBatteryB
 
 static EWiiInputReportIDs GetButtonPacketType(SDL_DriverWii_Context *ctx)
 {
+    if (ctx->m_bSkyBreakIR && ctx->m_bReportSensors &&
+        (ctx->m_eExtensionControllerType == k_eWiiExtensionControllerType_None ||
+         ctx->m_eExtensionControllerType == k_eWiiExtensionControllerType_Nunchuk))
+        return k_eWiiInputReportIDs_ButtonData7; /* accel + IR10 + extension6 */
     switch (ctx->m_eExtensionControllerType) {
     case k_eWiiExtensionControllerType_WiiUPro:
         return k_eWiiInputReportIDs_ButtonDataD;
@@ -812,7 +820,10 @@ static SDL_bool HIDAPI_DriverWii_OpenJoystick(SDL_HIDAPI_Device *device, SDL_Joy
         /* Maximum is Classic Controller + Wiimote */
         joystick->nbuttons = k_eWiiButtons_Max;
     }
-    joystick->naxes = SDL_CONTROLLER_AXIS_MAX;
+    ctx->m_bSkyBreakIR = SDL_GetHintBoolean("SKYBREAK_WII_IR", SDL_FALSE) &&
+        (ctx->m_eExtensionControllerType == k_eWiiExtensionControllerType_None ||
+         ctx->m_eExtensionControllerType == k_eWiiExtensionControllerType_Nunchuk);
+    joystick->naxes = ctx->m_bSkyBreakIR ? 12 : SDL_CONTROLLER_AXIS_MAX;
 
     ctx->m_unLastInput = SDL_GetTicks();
 
@@ -856,6 +867,50 @@ static int HIDAPI_DriverWii_SendJoystickEffect(SDL_HIDAPI_Device *device, SDL_Jo
     return SDL_Unsupported();
 }
 
+static SDL_bool SkyBreakConfigureIR(SDL_DriverWii_Context *ctx)
+{
+    /* Initialization runs on the isolated controller thread. Keep the pixel
+       clock, logic, and register writes in order and wait for write ACKs. */
+    Uint8 report[2] = { k_eWiiOutputReportIDs_IRCameraEnable, 0x04 };
+    Uint8 value = 0x08;
+    const Uint8 sensitivity1[9] = { 0x02,0x00,0x00,0x71,0x01,0x00,0xaa,0x00,0x64 };
+    const Uint8 sensitivity2[2] = { 0x63,0x03 }; /* Wii sensitivity level 3 */
+    report[1] |= ctx->m_bRumbleActive;
+    if (!WriteOutput(ctx, report, 2, SDL_TRUE)) return SDL_FALSE;
+    SDL_Delay(50);
+    report[0] = k_eWiiOutputReportIDs_IRCameraEnable2;
+    if (!WriteOutput(ctx, report, 2, SDL_TRUE)) return SDL_FALSE;
+    SDL_Delay(50);
+    if (!WriteRegister(ctx, 0xb00030, &value, 1, SDL_TRUE)) return SDL_FALSE;
+    SDL_Delay(50);
+    if (!WriteRegister(ctx, 0xb00000, sensitivity1, 9, SDL_TRUE)) return SDL_FALSE;
+    SDL_Delay(50);
+    if (!WriteRegister(ctx, 0xb0001a, sensitivity2, 2, SDL_TRUE)) return SDL_FALSE;
+    SDL_Delay(50);
+    value = 0x01;
+    if (!WriteRegister(ctx, 0xb00033, &value, 1, SDL_TRUE)) return SDL_FALSE;
+    SDL_Delay(50);
+    value = 0x08;
+    return WriteRegister(ctx, 0xb00030, &value, 1, SDL_TRUE);
+}
+
+static void SkyBreakPostIR(SDL_DriverWii_Context *ctx, SDL_Joystick *joystick, const Uint8* bytes)
+{
+    const SkyBreakWiiIR ir = SkyBreakDecodeWiiIR(bytes, 10);
+    if (!ctx->m_bSkyBreakIR) return;
+    if (ir.valid) {
+        SDL_PrivateJoystickAxis(joystick, 6, (Sint16)(ir.centre_x * 65534.0f - 32767.0f));
+        SDL_PrivateJoystickAxis(joystick, 7, (Sint16)(ir.centre_y * 65534.0f - 32767.0f));
+        SDL_PrivateJoystickAxis(joystick, 8, (Sint16)(ir.horizon_x * 32767.0f));
+        SDL_PrivateJoystickAxis(joystick, 9, (Sint16)(ir.horizon_y * 32767.0f));
+    }
+    SDL_PrivateJoystickAxis(joystick, 10, ir.valid ? SDL_JOYSTICK_AXIS_MAX : 0);
+    /* A packet counter makes an unchanged-but-live IR reading distinguishable
+       from a stalled stream when SDL suppresses unchanged axis events. */
+    ctx->m_unIRSerial = (ctx->m_unIRSerial + 1) & 0x7fff;
+    SDL_PrivateJoystickAxis(joystick, 11, (Sint16)ctx->m_unIRSerial);
+}
+
 static int HIDAPI_DriverWii_SetJoystickSensorsEnabled(SDL_HIDAPI_Device *device, SDL_Joystick *joystick, SDL_bool enabled)
 {
     SDL_DriverWii_Context *ctx = (SDL_DriverWii_Context *)device->context;
@@ -871,6 +926,12 @@ static int HIDAPI_DriverWii_SetJoystickSensorsEnabled(SDL_HIDAPI_Device *device,
             }
         }
 
+        if (ctx->m_bSkyBreakIR && enabled && !SkyBreakConfigureIR(ctx)) {
+            /* Preserve MotionPlus if the camera failed; the UI reports no IR. */
+            ctx->m_bSkyBreakIR = SDL_FALSE;
+            SDL_LogWarn(SDL_LOG_CATEGORY_INPUT, "SkyBreak Wii: IR initialization failed; MotionPlus remains active");
+        }
+        if (!enabled) SDL_PrivateJoystickAxis(joystick, 10, 0);
         ResetButtonPacketType(ctx);
     }
     return 0;
@@ -1314,7 +1375,7 @@ static void HandleWiiRemoteAccelData(SDL_DriverWii_Context *ctx, SDL_Joystick *j
     Sint16 x, y, z;
     float values[3];
 
-    if (!ctx->m_bReportSensors) {
+    if (!ctx->m_bReportSensors || !data->hasAccelerometer) {
         return;
     }
 
@@ -1512,7 +1573,7 @@ static void HandleButtonPacket(SDL_DriverWii_Context *ctx, SDL_Joystick *joystic
         RequestButtonPacketType(ctx, eExpectedReport);
     }
 
-    /* IR camera data is not supported */
+    /* SkyBreak reads basic IR without dropping the six extension bytes. */
     SDL_zero(data);
     switch (ctx->m_rgucReadBuffer[0]) {
     case k_eWiiInputReportIDs_ButtonData0: /* 30 BB BB */
@@ -1542,6 +1603,8 @@ static void HandleButtonPacket(SDL_DriverWii_Context *ctx, SDL_Joystick *joystic
         break;
     case k_eWiiInputReportIDs_ButtonData7: /* 37 BB BB AA AA AA II II II II II II II II II II EE EE EE EE EE EE */
         GetBaseButtons(&data, ctx->m_rgucReadBuffer + 1);
+        GetAccelerometer(&data, ctx->m_rgucReadBuffer + 3);
+        SkyBreakPostIR(ctx, joystick, ctx->m_rgucReadBuffer + 6);
         GetExtensionData(&data, ctx->m_rgucReadBuffer + 16, 6);
         break;
     case k_eWiiInputReportIDs_ButtonDataD: /* 3d EE EE EE EE EE EE EE EE EE EE EE EE EE EE EE EE EE EE EE EE EE */

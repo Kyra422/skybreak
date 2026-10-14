@@ -103,12 +103,13 @@ inline void merge_nunchuk(NunchukState& destination, const NunchukState& source)
 
 struct WiimoteState {
     uint32_t buttons;
-    float ir_x, ir_y; 
+    float ir_x, ir_y;
     float accel_x, accel_y, accel_z;
     float gyro_pitch, gyro_yaw, gyro_roll;
     int8_t err;
     NunchukState nunchuk{};
     MotionSample motion{};
+    float ir_horizon_x=1.0f, ir_horizon_y=0.0f;
 };
 
 class IInputSource {

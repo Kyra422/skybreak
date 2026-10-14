@@ -19,6 +19,11 @@ public:
     void update(GameCubePadState pads[4], WiimoteState motes[4]) override;
 
 private:
+    void update_wii_remote(int i, const PadSnapshot& snap, WiimoteState& mote, bool& any_gyro);
+    float wii_ir_reference[4][2]{};
+    bool wii_ir_reference_set[4]{};
+    float wii_nunchuk_previous[4][3]{};
+    bool wii_nunchuk_seen[4]{};
     void check_controller_thread(); // INPUT13 watchdog: "[Input] controller detection is blocked ..."
 
     // Sword gesture state per controller (motion_gesture.h StickFlick, thrust / Nunchuk flick edges).
@@ -71,6 +76,7 @@ struct ControllerApi {
     int (*type)(SDL_GameController*) = nullptr;           // SDL_GameControllerGetType
     float (*gyro_rate)(SDL_GameController*) = nullptr;    // SDL_GameControllerGetSensorDataRate(GYRO)
     const char* (*error)() = nullptr;        // SDL_GetError
+    bool (*wii_ir)(SDL_GameController*, float out[4], bool& valid, uint16_t& serial) = nullptr;
     void (*pump_messages)() = nullptr;       // this thread's window messages (tests: optional)
 };
 
@@ -102,6 +108,16 @@ inline ControllerApi sdl_controller_api() {
     a.type = [](SDL_GameController* c) { return int(SDL_GameControllerGetType(c)); };
     a.gyro_rate = [](SDL_GameController* c) { return SDL_GameControllerGetSensorDataRate(c, SDL_SENSOR_GYRO); };
     a.error = [] { return SDL_GetError(); };
+    a.wii_ir=[](SDL_GameController* c,float out[4],bool& valid,uint16_t& serial) {
+        auto* j=SDL_GameControllerGetJoystick(c);
+        if(!j || SDL_JoystickNumAxes(j)<12)return false;
+        out[0]=(SDL_JoystickGetAxis(j,6)/32767.0f+1.0f)*0.5f;
+        out[1]=(SDL_JoystickGetAxis(j,7)/32767.0f+1.0f)*0.5f;
+        out[2]=SDL_JoystickGetAxis(j,8)/32767.0f;
+        out[3]=SDL_JoystickGetAxis(j,9)/32767.0f;
+        valid=SDL_JoystickGetAxis(j,10)>0;
+        serial=uint16_t(SDL_JoystickGetAxis(j,11));return true;
+    };
     return a;
 }
 } // namespace nwii::runtime::input

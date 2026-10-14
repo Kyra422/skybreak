@@ -57,3 +57,27 @@ jobs:
           outputs/nwiirecomp/nWiiRuntime/src/core/config.cpp -o /tmp/button-test
       - name: Check mapping, layout selection, calibration and sensor timing
         run: /tmp/button-test
+      - name: Compile Wii Remote production regression
+        run: >-
+          g++ -std=c++20 -O2 -pthread -DSDL_MAIN_HANDLED -I/usr/include/SDL2
+          -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include
+          tests/wii_remote_test.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/input_manager.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/sources/gamepad_source.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/input/sources/mouse_keyboard_source.cpp
+          outputs/nwiirecomp/nWiiRuntime/src/core/config.cpp -o /tmp/wii-test
+      - name: Check native Wii buttons, MotionPlus timing, Nunchuk and reconnects
+        run: /tmp/wii-test
+      - name: Compile experimental co-op context regression
+        run: g++ -std=c++20 -O2 -Ioutputs/nwiirecomp/nWiiRuntime/src tests/player_context_test.cpp -o /tmp/player-context-test
+      - name: Check player state isolation, failure rollback and restoration
+        run: /tmp/player-context-test
+      - name: Extract Wii IR production driver regression
+        run: python3 tests/make_wii_ir_test.py /tmp/wii-ir-test.cpp
+      - name: Compile Wii IR production driver regression
+        run: >-
+          g++ -std=c++20 -O2 -DSDL_MAIN_HANDLED -I/usr/include/SDL2
+          -Iwork/nwii-build/_deps/sdl2-src/src/joystick/hidapi
+          /tmp/wii-ir-test.cpp -o /tmp/wii-ir-test
+      - name: Check report 37, real acceleration, infrared dots and initialization failures
+        run: /tmp/wii-ir-test

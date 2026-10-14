@@ -1,6 +1,7 @@
 #include "mouse_keyboard_source.h"
 #include "../virtual_motion.h"
 #include "../motion_gesture.h"
+#include "../pad_hub.h"
 #include "../input_bindings.h"
 #include "runtime/config.h"
 #include <SDL.h>
@@ -25,6 +26,12 @@ void MouseKeyboardSource::update(GameCubePadState pads[4], WiimoteState motes[4]
     // CTRL18-INPUT: preset swap / rebind requests from the UI are applied here, on the InputManager thread; the
     // "kbm" preset has its own path, "classic" continues below unchanged.
     apply_pending_input_bindings_reload();
+    if (g_wii_remote_active[0].load()) {
+        // A mouse left on the desktop must not take the pointer from a real remote.
+        if (kbm_captured || owns_relative_mouse) SDL_SetRelativeMouseMode(SDL_FALSE);
+        kbm_captured = owns_relative_mouse = false;
+        return;
+    }
     if (last_key_preset != int(input_bindings().key_preset)) {
         if (last_key_preset >= 0) {
             kbm.reset();

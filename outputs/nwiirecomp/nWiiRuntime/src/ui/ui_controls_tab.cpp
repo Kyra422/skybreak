@@ -17,6 +17,8 @@
 #include "input/controller_events.h"
 #include "../input/gyro_calibration.h"
 #include "../input/gyro_aim_filter.h"
+#include "../input/wii_pairing.h"
+#include "../input/pad_hub.h"
 #include "../input/hd_translator.h" // path: CTRL18-CAM (lib include path)
 #include "runtime/gx/glyph_sets.h"
 #include "runtime/gx/hd_textures.h"
@@ -345,7 +347,8 @@ void ApplyGlyphSet(const Settings& saved) {
     const std::string pad = ep && *ep ? std::string(ep) : saved.preset_gamepad;
     const std::string kb = ek && *ek ? std::string(ek) : saved.preset_keyboard;
     const Device d = s.dev.known ? s.dev.last : PadConnected() ? glyphs::DeviceFromType(FirstPadType()) : Device::Keyboard;
-    const std::string folder = glyphs::ResolveFolder(setting, d, pad, kb);
+    const std::string folder = setting == "auto" && runtime::input::g_wii_remote_active[0].load()
+        ? std::string() : glyphs::ResolveFolder(setting, d, pad, kb);
     if (folder == s.glyph_folder) return;
     s.glyph_folder = folder;
     runtime::hle::HdTexSetGlyphSet(folder);
@@ -434,6 +437,9 @@ std::string ControlsTakeGyroHint(const Settings& saved) {
 
 std::string ControlsQuery(const std::string& q, const Settings& edit, const Settings& saved) {
     TabState& s = T();
+    if(q=="wii_ir_visible")return runtime::input::g_wii_sensorbar_visible[0].load() ? "1" : "0";
+    if(q=="wii_connected")return runtime::input::g_wii_remote_active[0].load() ? "1" : "0";
+    if(q=="wii_pairing_busy")return runtime::input::wii_pairing_status().busy ? "1" : "0";
     if(q=="gyro_player_space")return edit.gyro_player_space ? "1" : "0";
     if(q=="gyro_cal_capable")return runtime::input::calibration_status(s.gyro_cal_slot).capable ? "1" : "0";
     if (q == "capture") return s.cap.active ? "1" : "0";
@@ -566,13 +572,32 @@ void RenderControlsTab(Settings& e, const Settings& o, const ControlsTabHost& h)
     const auto hint = [&](const char* t) { if (h.hint) h.hint(t); };
     const auto track = [&](const std::string& t) { if (h.track) h.track(t); };
 
+    // ---- real Wii Remote (the native layout is independent of saved gamepad presets)
+    section("Wii Remote Plus (Bluetooth)");
+    hint("Attach your Nunchuk, press the red SYNC button, then select Pair Wii Remote. Keep the LEDs flashing while searching.");
+    const auto pairing = runtime::input::wii_pairing_status();
+    if (!pairing.busy && ImGui::Button("Pair Wii Remote")) runtime::input::start_wii_pairing();
+    track("Pair Wii Remote");
+    if (!pairing.message.empty()) ImGui::TextWrapped("%s", pairing.message.c_str());
+    if (runtime::input::g_wii_remote_active[0].load()) {
+        ImGui::TextUnformatted("Wii Remote connected: original Wii buttons and full MotionPlus controls are active.");
+        hint("A = A, B = B. Nunchuk stick = move, Z = lock on, C = look. Down centres the pointer. Calibrate the gyro below if it drifts.");
+    }
+    hint("Normal Bluetooth. A powered Wii/Wii U sensor bar supplies the IR lights; the Wii Remote sends readings to the PC. The remote speaker is not implemented.");
+    if(runtime::input::g_wii_remote_active[0].load())
+        ImGui::TextUnformatted(runtime::input::g_wii_sensorbar_visible[0].load()
+            ? "Sensor bar: visible (physical IR tracking active)"
+            : "Sensor bar: not visible. Point the remote at the powered bar. Down centres the pointer; calibrate the gyro separately.");
+
     // ---- presets
     section("Besturing");
     {
         const char* pad_name = nullptr;
         const char* type = FirstPadType(&pad_name);
         if (h.f_small) ImGui::PushFont(h.f_small);
-        if (*type)
+        if (std::strcmp(type,"Wii Remote")==0)
+            ImGui::Text("Controller: %s (original Wii buttons)",pad_name);
+        else if (*type)
             ImGui::Text("Controller: %s (%s-knoppen)  \xC2\xB7  laatst gebruikt: %s", pad_name, FamilyNl(PadFamily()),
                         st.dev.known ? FamilyNl(st.dev.last) : "-");
         else
@@ -582,6 +607,9 @@ void RenderControlsTab(Settings& e, const Settings& o, const ControlsTabHost& h)
     const float avail = ImGui::GetContentRegionAvail().x;
     const float sp = ImGui::GetStyle().ItemSpacing.x;
     const ImVec2 card3((avail - 2 * sp) / 3.0f, 92.0f * h.s), card2((avail - sp) / 2.0f, 74.0f * h.s);
+    const bool real_wii=runtime::input::g_wii_remote_active[0].load();
+    if(real_wii) ImGui::TextUnformatted("Gamepad presets apply to Xbox, PlayStation and Switch controllers. The real Wii Remote uses its original layout.");
+    ImGui::BeginDisabled(real_wii);
     ImGui::TextUnformatted(Label("preset_gamepad"));
     if (PresetCard("hd", "Switch HD (knoppen)", "Zoals Skyward Sword HD: rechterstick = zwaard, ZR = voorwerp, L + stick = camera.",
                    "Aanbevolen", e.preset_gamepad == "switch-hd", card3, h))
@@ -595,6 +623,7 @@ void RenderControlsTab(Settings& e, const Settings& o, const ControlsTabHost& h)
     if (PresetCard("wii", "Wii (beweging/gyro)", "Zwaaien met een DualSense of Switch Pro; rechterstick = camera.", "",
                    e.preset_gamepad == "wii-motion", card3, h))
         e.preset_gamepad = "wii-motion";
+    ImGui::EndDisabled();
     ImGui::TextUnformatted(Label("preset_keyboard"));
     if (PresetCard("kbm", "Toetsenbord + muis", "WASD, muis = camera, linkermuisknop = zwaard, E = actie, Esc = uitrusting.",
                    "", e.preset_keyboard == "kbm", card2, h))
@@ -685,7 +714,11 @@ void RenderControlsTab(Settings& e, const Settings& o, const ControlsTabHost& h)
                         ct::Table(table).section);
     if (h.f_small) ImGui::PopFont();
     if (!st.msg.empty()) ImGui::TextColored(st.msg_err ? ImVec4(1.0f, 0.55f, 0.35f, 1.0f) : ImVec4(0.75f, 0.9f, 0.6f, 1.0f), "%s", st.msg.c_str());
+    const bool native_binding_view=real_wii && view==0;
+    if(native_binding_view) ImGui::TextUnformatted("Wii Remote buttons use their native meanings. These gamepad remappings do not affect the remote.");
+    ImGui::BeginDisabled(native_binding_view);
     BindingTable(e, table, h);
+    ImGui::EndDisabled();
 
     // ---- live test panel
     ImGui::Spacing();

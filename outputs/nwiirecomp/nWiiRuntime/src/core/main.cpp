@@ -690,6 +690,11 @@ int main(int argc, char **argv) {
       SDL_SetHint(SDL_HINT_DIRECTINPUT_ENABLED, (dinput && dinput[0] == '1') ? "1" : "0");
       SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5, "1");
       SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4, "1");
+      // SDL disables its Wii driver by default because DolphinBar transport is
+      // incompatible. This preview targets ordinary Bluetooth Wii Remote Plus.
+      const char* real_wii = std::getenv("NWII_WII_REMOTE");
+      SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_WII, real_wii && real_wii[0] == '0' ? "0" : "1");
+      SDL_SetHint("SKYBREAK_WII_IR", "1");
       // Enhanced Bluetooth reports carry the motion sensors (DualSense/DualShock 4 over BT).
       SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE, "1");
       SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");

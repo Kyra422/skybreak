@@ -3,6 +3,7 @@
 #include "../virtual_motion.h"
 #include "../input_bindings.h"
 #include "../aurora_pad_sensors.h"
+#include "../wii_remote_controls.h"
 #include "input/controller_events.h"
 #include "runtime/config.h"
 #include <SDL.h>
@@ -39,6 +40,8 @@ struct SensorCapture {
     struct Slot {
         SDL_JoystickID id = -1;
         std::vector<SensorEvent> events;
+        float nunchuk_accel[3]{};
+        uint64_t nunchuk_ns = 0;
     };
     std::array<Slot, 8> slots;
 };
@@ -49,15 +52,26 @@ SensorCapture& sensor_capture() {
 int SDLCALL sensor_watch(void*, SDL_Event* event) {
     if (!event || event->type != SDL_CONTROLLERSENSORUPDATE) return 0;
     const SDL_ControllerSensorEvent& e = event->csensor;
-    if (e.sensor != SDL_SENSOR_GYRO && e.sensor != SDL_SENSOR_ACCEL) return 0;
-    calibration_observe(e.which, e.sensor == SDL_SENSOR_GYRO, e.timestamp_us, e.data);
+    if (e.sensor != SDL_SENSOR_GYRO && e.sensor != SDL_SENSOR_ACCEL && e.sensor != SDL_SENSOR_ACCEL_L) return 0;
+    // Wii HID reports have no hardware timestamp. Arrival time, rather than
+    // the much faster host poll interval, defines their rotation duration.
+    const uint64_t time_us = e.timestamp_us ? e.timestamp_us : motion_now_ns() / 1000;
+    if (e.sensor != SDL_SENSOR_ACCEL_L)
+        calibration_observe(e.which, e.sensor == SDL_SENSOR_GYRO, time_us, e.data);
     auto& capture = sensor_capture();
     std::lock_guard lock(capture.mutex);
     for (auto& slot : capture.slots) {
         if (slot.id != e.which) continue;
+        if (e.sensor == SDL_SENSOR_ACCEL_L) {
+            if (std::isfinite(e.data[0]) && std::isfinite(e.data[1]) && std::isfinite(e.data[2])) {
+                std::copy(e.data, e.data + 3, slot.nunchuk_accel);
+                slot.nunchuk_ns = motion_now_ns();
+            }
+            break;
+        }
         if (slot.events.size() < 8192) {
             SensorEvent s;
-            s.t_us = e.timestamp_us;
+            s.t_us = time_us;
             s.gyro = e.sensor == SDL_SENSOR_GYRO;
             for (int k = 0; k < 3; ++k) s.v[k] = e.data[k];
             slot.events.push_back(s);
@@ -84,7 +98,19 @@ void release_sensor_slot(SDL_JoystickID id) {
     auto& capture = sensor_capture();
     std::lock_guard lock(capture.mutex);
     for (auto& slot : capture.slots)
-        if (slot.id == id) { slot.id = -1; slot.events.clear(); }
+        if (slot.id == id) { slot.id = -1; slot.events.clear(); slot.nunchuk_ns = 0; }
+}
+
+bool read_nunchuk_accel(SDL_JoystickID id, float out[3]) {
+    auto& capture = sensor_capture();
+    std::lock_guard lock(capture.mutex);
+    const auto now = motion_now_ns();
+    for (const auto& slot : capture.slots)
+        if (slot.id == id && slot.nunchuk_ns && now >= slot.nunchuk_ns && now - slot.nunchuk_ns <= kMotionMaxAgeNs) {
+            controller_accel_to_kpad(slot.nunchuk_accel, out);
+            return true;
+        }
+    return false;
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -98,7 +124,10 @@ struct CaptureDevice {
     SDL_JoystickID id = -1;
     uint32_t generation = 0;
     int applied_sensors = 0;
-    bool gyro_enabled = false, accel_enabled = false;
+    bool gyro_enabled = false, accel_enabled = false, nunchuk_enabled = false;
+    bool wii_remote = false, has_nunchuk = false;
+    uint16_t ir_serial=0;
+    uint64_t ir_ms=0;
     uint64_t rumble_serial = 0;
     int type = 0;
     float gyro_rate = 0.0f;
@@ -130,7 +159,9 @@ void apply_requests(CaptureDevice& d, int slot) {
         const bool accel_on = (want & kWantGyroAccel) != 0;
         const bool gyro_ok = aurora_sensors::transition(d.controller, SDL_SENSOR_GYRO, gyro_on, d.gyro_enabled);
         const bool accel_ok = aurora_sensors::transition(d.controller, SDL_SENSOR_ACCEL, accel_on, d.accel_enabled);
-        if (gyro_ok && accel_ok) d.applied_sensors = want;
+        const bool nunchuk_ok = !d.has_nunchuk || aurora_sensors::transition(
+            d.controller, SDL_SENSOR_ACCEL_L, accel_on, d.nunchuk_enabled);
+        if (gyro_ok && accel_ok && nunchuk_ok) d.applied_sensors = want;
     }
     const uint64_t r = hub.rumble[size_t(slot)].load();
     if ((r >> 48) != d.rumble_serial) {
@@ -218,6 +249,9 @@ void capture_controllers(const ControllerApi* api) {
         d.gyro_rate = api && api->gyro_rate ? api->gyro_rate(c) : 0.0f;
         const char* name = SDL_GameControllerName(c);
         std::snprintf(d.name, sizeof d.name, "%s", name ? name : "controller");
+        d.wii_remote = is_wii_remote_name(d.name);
+        d.has_nunchuk = d.wii_remote && aurora_sensors::has(c, SDL_SENSOR_ACCEL_L);
+        if (d.wii_remote) d.type = kWiiRemotePadType;
         const bool gyro = aurora_sensors::has(c, SDL_SENSOR_GYRO) && aurora_sensors::has(c, SDL_SENSOR_ACCEL);
         log_controller("connected", slot, d, gyro);
         push_controller_event(ControllerEventKind::Connected, slot, d.name, pad_type_name(d.type), gyro);
@@ -236,6 +270,17 @@ void capture_controllers(const ControllerApi* api) {
         p.instance_id = d.id;
         p.generation = d.generation;
         p.type = d.type;
+        p.wii_remote = d.wii_remote;
+        p.has_nunchuk = d.has_nunchuk;
+        if(d.wii_remote && api && api->wii_ir) {
+            float data[4];bool valid=false;uint16_t serial=0;
+            p.ir_supported=api->wii_ir(d.controller,data,valid,serial);
+            if(p.ir_supported) {
+                if(serial!=d.ir_serial) {d.ir_serial=serial;d.ir_ms=now;}
+                p.ir_valid=valid && d.ir_ms && now>=d.ir_ms && now-d.ir_ms<=100;
+                p.ir_x=data[0];p.ir_y=data[1];p.ir_horizon_x=data[2];p.ir_horizon_y=data[3];
+            }
+        }
         p.gyro_rate_hz = d.gyro_rate;
         std::memcpy(p.name, d.name, sizeof p.name);
         for (int b = 0; b < kPadButtonCount; ++b)
@@ -450,6 +495,8 @@ void GamepadSource::update(GameCubePadState pads[4], WiimoteState motes[4]) {
 
     for (int i = 0; i < 4; ++i) {
         const PadSnapshot& snap = snapshot.pad[size_t(i)];
+        g_wii_remote_active[i].store(snap.connected && snap.wii_remote);
+        g_wii_sensorbar_visible[i].store(snap.connected && snap.wii_remote && snap.ir_valid);
         if (snap.generation != generation[i]) {
             // Another device in this slot (or none): no gesture/toggle/gyro state carries over. sensor_id stays,
             // so a different device clears the gyro bias estimate on activation (INPUT10).
@@ -459,6 +506,8 @@ void GamepadSource::update(GameCubePadState pads[4], WiimoteState motes[4]) {
                 gyro[i].discard();
                 sensors_on[i] = false;
             }
+            wii_nunchuk_seen[i] = false;
+            wii_ir_reference_set[i] = false;
             flick[i] = StickFlick{};
             previous_rb[i] = previous_rt[i] = false;
             toggle_held_s[i] = 0.0;
@@ -480,6 +529,10 @@ void GamepadSource::update(GameCubePadState pads[4], WiimoteState motes[4]) {
         motes[i].err = 0;
         const float dt = motes[i].motion.dt_seconds;
         const bool dt_ok = dt > 0.0f && dt <= 0.1f;
+        if (snap.wii_remote) {
+            update_wii_remote(i, snap, motes[i], any_gyro);
+            continue; // A real remote always uses its original layout, in every saved preset.
+        }
         PadState pad;
         pad.snap = &snap;
         pad.trigger_threshold = bind.trigger_threshold;
@@ -876,6 +929,93 @@ void GamepadSource::update(GameCubePadState pads[4], WiimoteState motes[4]) {
         std::fflush(stdout);
     }
     owner_prev = g_aim_owner.load();
+}
+
+void GamepadSource::update_wii_remote(int i, const PadSnapshot& snap, WiimoteState& mote, bool& any_gyro) {
+    const float dt=mote.motion.dt_seconds;
+    const bool focused=SDL_GetKeyboardFocus()!=nullptr;
+    const bool capable=snap.has_gyro && snap.has_accel;
+    // Remove a previously queued virtual swing; the actual remote supplies swings.
+    g_virtual_gesture[i].reset();
+    mote.buttons=focused ? wii_remote_buttons(snap.buttons) : 0;
+    mote.ir_x=mote.ir_y=-1.0f;
+    mote.nunchuk=focused ? wii_remote_nunchuk(snap) : NunchukState{};
+    mote.motion.available=false;
+    g_gyro_drives_channel[i].store(focused && capable);
+    if(!focused || !capable) {
+        request_sensors(i,0);
+        if(sensors_on[i]) {release_sensor_slot(sensor_id[i]);gyro[i].discard();sensors_on[i]=false;}
+        if(!capable && !no_sensor_logged[i]) {
+            no_sensor_logged[i]=true;
+            std::printf("[Input] Wii Remote has no MotionPlus sensor. Skyward Sword requires Wii Remote Plus and a Nunchuk.\n");
+        }
+        return;
+    }
+    any_gyro=true;g_aim_owner.store(1);
+    if(!sensors_on[i] || sensor_id[i]!=snap.instance_id) {
+        if(sensor_id[i]!=snap.instance_id) {gyro[i].reset_bias();calibration_serial[i]=0;}
+        sensor_id[i]=snap.instance_id;gyro[i].reset();gyro[i].grip_tilt=0;
+        // SDL normalizes Wii and gamepad sensor axes alike. A real remote keeps
+        // its actual pose; gamepad grip offsets and gravity-relative aim do not apply.
+        gyro[i].filter_aim=false;
+        request_sensors(i,kWantGyroAccel);
+        drain_sensor_events(sensor_id[i],scratch);
+        sensors_on[i]=true;recenter_left_s[i]=0;recenter_prev[i]=false;
+        push_controller_event(ControllerEventKind::GyroOn,i,snap.name,"Wii Remote",true);
+        std::printf("[Input] Wii Remote Plus motion active: original buttons, physical MotionPlus and %s. Down centres the pointer.\n",
+                    snap.has_nunchuk ? "physical Nunchuk" : "no Nunchuk (attach one)");
+        std::fflush(stdout);
+    }
+    request_sensors(i,kWantGyroAccel);
+    drain_sensor_events(sensor_id[i],scratch);
+    float bias[3];if(calibration_bias(sensor_id[i],calibration_serial[i],bias))gyro[i].set_bias(bias);
+    gyro[i].deadband=input_bindings().gyro_deadband;
+    for(const auto& e:scratch)gyro[i].add(e);
+    if(mote.nunchuk.available) {
+        float a[3];
+        if(read_nunchuk_accel(sensor_id[i],a)) {
+            VirtualGestureController::clamp_accel(a,kNunchukAccelRangeG);
+            mote.nunchuk.accel_x=a[0];mote.nunchuk.accel_y=a[1];mote.nunchuk.accel_z=a[2];
+            double speed=0;
+            for(int axis=0;axis<3;++axis) {
+                const double delta=a[axis]-wii_nunchuk_previous[i][axis];speed+=delta*delta;
+                wii_nunchuk_previous[i][axis]=a[axis];
+            }
+            mote.nunchuk.accel_speed=wii_nunchuk_seen[i] ? float(std::sqrt(speed)) : 0;
+            wii_nunchuk_seen[i]=true;
+        } else {wii_nunchuk_seen[i]=false;}
+    }
+    auto& frame=g_measured_motion[i];frame.sequence=mote.motion.sequence;frame.count=0;
+    if(!(dt>0 && dt<=0.1f)) {gyro[i].discard();return;}
+    const auto n=gyro[i].produce(dt,frame.steps.data(),frame.steps.size());
+    const bool down=(mote.buttons & 0x0004)!=0;
+    const bool ir=snap.ir_valid && std::isfinite(snap.ir_x) && std::isfinite(snap.ir_y);
+    if(ir && (!wii_ir_reference_set[i] || (down && !recenter_prev[i]) || g_guest_point_center.load())) {
+        // The current aim is the screen centre, regardless of the bar being
+        // above/below the display. Lost visibility never silently re-centres it.
+        wii_ir_reference[i][0]=snap.ir_x;wii_ir_reference[i][1]=snap.ir_y;
+        wii_ir_reference_set[i]=true;
+    }
+    const float ir_x=ir ? std::clamp(0.5f+snap.ir_x-wii_ir_reference[i][0],0.0f,1.0f) : -1.0f;
+    const float ir_y=ir ? std::clamp(0.5f+snap.ir_y-wii_ir_reference[i][1],0.0f,1.0f) : -1.0f;
+    mote.ir_horizon_x=ir ? snap.ir_horizon_x : 1.f;
+    mote.ir_horizon_y=ir ? snap.ir_horizon_y : 0.f;
+    if(down && !recenter_prev[i]) recenter_left_s[i]=0.6;
+    recenter_prev[i]=down;
+    if(g_guest_point_center.load() || recenter_left_s[i]>0) {
+        // Match the game's initial point-at-screen step without physical IR.
+        double target[3];pointer_direction(0,0,target);float rates[3];
+        g_virtual_orientation[i].rates_toward(target,dt,kPointerMotionMaxRateRadS,rates);
+        merge_virtual_motion(mote.motion,true,rates[0],rates[1],rates[2]);
+        frame.sequence=0;recenter_left_s[i]=std::max(0.0,recenter_left_s[i]-dt);
+        mote.ir_x=ir ? ir_x : g_guest_point_center.load() ? 0.5f : -1.f;
+        mote.ir_y=ir ? ir_y : g_guest_point_center.load() ? 0.5f : -1.f;
+    } else {
+        mote.ir_x=ir_x;mote.ir_y=ir_y;frame.count=n;
+        // Zero fresh packets is explicitly retained by InputManager, rather
+        // than replaying the last measured rotation at the host poll rate.
+        merge_virtual_motion(mote.motion,true,0,0,0);
+    }
 }
 
 // CTRL18-INPUT: the "switch-hd" preset for one controller. Physical inputs -> intents ([input.gamepad_hd]) ->

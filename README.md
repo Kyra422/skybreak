@@ -1,5 +1,10 @@
 # SkyBreak
 
+Development previews: [Wii Remote Plus and sensor-bar support](docs/WII_REMOTE_PREVIEW.md)
+is newer than the Alpha 3 installer and needs hardware retesting. Initial
+[online co-op engine work](docs/ONLINE_COOP_RESEARCH.md) is experimental and does
+not provide playable multiplayer.
+
 An experimental native Windows recompilation of Skyward Sword Wii USA 1.0
 (SOUE01), built locally from the player's own game. This source preview includes
 the runtime, translator, installer, launcher, local achievements, Discord Rich

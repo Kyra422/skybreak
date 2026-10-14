@@ -92,7 +92,7 @@ namespace {
 namespace fs = std::filesystem;
 using runtime::Config;
 
-constexpr const char* kVersion = "0.23.0 Alpha 3";
+constexpr const char* kVersion = "0.23.0 Alpha 3 + Wii preview";
 
 // ---------------------------------------------------------------------------------------- look
 const ImU32 kGold = IM_COL32(236, 200, 120, 255);
@@ -1873,6 +1873,9 @@ bool InitImGui(SDL_Window* window, SDL_GLContext ctx) {
 }
 
 void NewUiFrame(float W, float H) {
+    // Native remote connection/disconnection changes auto glyphs even without
+    // a button event (an idle remote must not retain an Xbox button pack).
+    ApplyGlyphSet(g.saved);
     EnsureFonts(UiScale(W, H));
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame();

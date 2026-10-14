@@ -133,6 +133,8 @@ void InputManager::update_locked(uint64_t monotonic_ns) {
         next_wii_motes[i].buttons = 0;
         next_wii_motes[i].err = -1;
         next_wii_motes[i].nunchuk = {};
+        next_wii_motes[i].ir_horizon_x=1.0f;
+        next_wii_motes[i].ir_horizon_y=0.0f;
         next_wii_motes[i].motion = {};
         next_wii_motes[i].motion.sequence = sequence;
         next_wii_motes[i].motion.monotonic_ns = monotonic_ns;
