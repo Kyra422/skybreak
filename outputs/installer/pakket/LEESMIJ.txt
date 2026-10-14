@@ -1,12 +1,12 @@
-SkyBreak {version} — Alpha 2 (installer hotfix)
+SkyBreak {version} — Alpha 3
 ==========================
 
 Community tester release for Windows x64. Experimental and unofficial.
 Requires your own Skyward Sword Wii USA 1.0 (SOUE01, revision 0).
 
-This installer update prevents overlapping builds and shows the active CMake
-and Ninja output. Gameplay is unchanged from Alpha 1. If that version already
-installed successfully, you can keep playing it.
+Alpha 3 updates gyro drift handling, button mapping, Loftwing tutorials,
+Timeshift rendering and interpolation. Update through Setup to rebuild the game.
+Use Controls > Calibrate gyro before testing fine motion aiming.
 
 INSTALL
 1. Extract the entire ZIP. Keep all included folders beside Setup.

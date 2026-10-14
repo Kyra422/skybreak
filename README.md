@@ -6,25 +6,17 @@ the runtime, translator, installer, launcher, local achievements, Discord Rich
 Presence and asset mod support. It contains no original game files or generated
 game code.
 
-## Tester release — 0.22.0 Alpha 2
+## Tester release — 0.23.0 Alpha 3
 
-[Download the Windows tester package](https://github.com/Kyra422/skybreak/releases/tag/v0.22.0-alpha.2).
+[Download the Windows tester package](https://github.com/Kyra422/skybreak/releases/tag/v0.23.0-alpha.3).
 Extract the entire ZIP and run **SkyBreak-Setup.exe**. The playable game is built
 locally from your own supported disc; no original game files are included.
 
-Alpha 2 fixes the installer: overlapping builds are blocked, and the active
-CMake/Ninja output is shown with direct access to the diagnostic log. Gameplay
-is unchanged from Alpha 1; successful Alpha 1 installations can keep playing.
-
-The development branch now includes **0.22.0 Graphics Preview 1**, with
-particle/camera matching fixes, incomplete-frame rejection and faster recovery
-after brief interpolation slowdowns. These changes are not in the Alpha 2
-download. See [preview validation and remaining limits](docs/GRAPHICS_PREVIEW.md).
-
-**0.22.0 Preview 2** adds Dusklight-inspired gyro aiming filters and GX depth
-textures for the solid-cyan Timeshift activation bug. See
-[motion/Timeshift validation](docs/MOTION_TIMESHIFT_PREVIEW.md). Aurora itself
-has not been integrated, and these changes are not in the Alpha 2 download.
+Alpha 3 includes gyro drift corrections, a controller-only adaptation of
+Aurora's sensor access, immediate button remapping, Loftwing tutorial/catch
+fixes, Timeshift depth rendering and interpolation improvements. See the
+[release notes](docs/RELEASE_0.23.0_ALPHA3.md) and
+[gyro validation](docs/GYRO_AURORA_PREVIEW.md).
 
 This alpha includes English defaults and guides, guided gyro calibration,
 controller layouts, asset mod tools, achievements and Discord Rich Presence.

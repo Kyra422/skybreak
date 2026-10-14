@@ -108,7 +108,8 @@ public:
     // (DualSense, DualShock 4, Switch Pro) drive the virtual MotionPlus remote. In game: hold the
     // touchpad or Create+Options for 1 s to switch.
     std::string gamepad_motion = "off";
-    bool gyro_auto_calibrate = true;   // still-controller gyro bias estimate
+    float gyro_deadband = 0.02f; // rad/s; zero disables idle suppression
+    bool gyro_auto_calibrate = true;   // legacy key, retained for file compatibility; no in-play bias learning
     float gyro_grip_tilt = 0.0f;       // degrees the far edge is raised when you hold the pad "level"
     float mouse_sensitivity = 1.0f;    // Shift + mouse relative turn, x 0.008 rad/px
     float aim_stick_speed = 1.0f;      // right-stick aim / menu cursor speed multiplier

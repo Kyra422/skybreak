@@ -40,13 +40,13 @@ int main(){
         manual.tracker.reset();manual.tracker.auto_calibrate=false;
         check(std::fabs(manual.run(2,.006f,hz))<.0002,"guided bias survives mode toggles and applies with automatic learning disabled");
         manual.tracker.reset_bias();manual.tracker.auto_calibrate=true;
-        manual.run(3,.02f,hz);
-        check(manual.tracker.bias_valid()&&std::fabs(manual.tracker.bias()[1]-.02)<.0001,
-              "reconnecting clears guided bias and allows stationary automatic calibration again");
+        const double ordinary=manual.run(3,.03f,hz);
+        check(!manual.tracker.bias_valid()&&std::fabs(ordinary-.09)<.0002,
+              "reconnecting clears guided bias; ordinary slow yaw cannot become the new sensor zero");
         Stream resume;resume.tracker.allow_bias_learning=false;resume.run(3,.03f,hz);
-        resume.tracker.allow_bias_learning=gyro_bias_learning_allowed(GameContext{});resume.run(3,.02f,hz);
-        check(resume.tracker.bias_valid()&&std::fabs(resume.tracker.bias()[1]-.02)<.0001,
-              "still calibration resumes outside active reference controls with a fresh window");
+        resume.tracker.allow_bias_learning=gyro_bias_learning_allowed(GameContext{});const double ordinary2=resume.run(3,.03f,hz);
+        check(!resume.tracker.bias_valid()&&std::fabs(ordinary2-.09)<.0002,
+              "returning to ordinary play never restarts unsafe background bias learning");
     }
     std::printf("RESULT %d/%d checks passed\n",checks-failures,checks);return failures?1:0;
 }

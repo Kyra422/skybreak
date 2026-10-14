@@ -9,8 +9,8 @@ int main(){
     GyroAimFilter f;
     float noise[3]{.0005f,-.001f,.0005f};f.process(noise,.004);
     check(noise[0]==0&&noise[1]==0&&noise[2]==0,"stationary sensor noise produces no pointer drift");
-    float diagonal[3]{.004f,.004f,0};f.process(diagonal,.004);
-    check(std::fabs(diagonal[0]-.004)<1e-6&&std::fabs(diagonal[1]-.004)<1e-6,"slow diagonal aim survives the vector deadband");
+    float diagonal[3]{.015f,.015f,0};f.process(diagonal,.004);
+    check(std::fabs(diagonal[0]-.015)<1e-6&&std::fabs(diagonal[1]-.015)<1e-6,"slow diagonal aim survives the vector deadband");
     f.reset();double rms=0;
     for(int i=0;i<500;++i){float v[3]{0,i%2?.12f:-.12f,0};f.process(v,.004);if(i>=100)rms+=v[1]*v[1];}
     check(std::sqrt(rms/400)<.03,"small alternating gyro jitter is reduced without a large latency filter");
@@ -33,7 +33,7 @@ int main(){
     check(out[n-1].accel[0]==0&&std::fabs(out[n-1].accel[1]+1)<1e-6&&out[n-1].accel[2]==0,"Wii acceleration and body axes stay physical");
     check(tracker.produce(.001,out,32)==0,"empty host polls do not manufacture angular movement");
     tracker.filter_aim=false;add(9000,.003f);n=tracker.produce(.004,out,32);
-    check(n>0&&std::fabs(out[n-1].rate[1]-.003)<1e-6,"three-axis puzzle path bypasses aiming filters");
+    check(n>0&&out[n-1].rate[1]==0,"three-axis puzzles suppress idle noise without changing physical acceleration");
     tracker.filter_aim=true;tracker.set_bias(noise);float bias[3]{0,.03f,0};tracker.set_bias(bias);tracker.auto_calibrate=true;tracker.allow_bias_learning=false;
     add(13000,.03f);n=tracker.produce(.004,out,32);
     check(n>0&&out[n-1].rate[1]==0,"guided calibration bias is removed before idle filtering");

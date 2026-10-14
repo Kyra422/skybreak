@@ -37,6 +37,15 @@ Each keeps its own licence; the full texts are inside bron\ at the paths given.
    They are fitted to the button pictures of the player's OWN disc on the player's PC (glyph_local.py, build step 8); the
    result in <install>\textures\glyphs belongs to that installation and is not part of this package.
 
+9. Aurora controller sensor adaptation - MIT, copyright (c) 2022 Luke Street
+   bron\outputs\nwiirecomp\nWiiRuntime\THIRD_PARTY_AURORA_LICENSE.txt
+   PAD sensor functions adapted for SkyBreak's SDL2 controller thread.
+   Source: https://github.com/encounter/aurora, revision 51797212b9283e91cc03c273854d63b2421d8490.
+
+10. Dusklight gyro EMA/deadband approach - CC0-1.0
+    Source: https://github.com/TwilitRealm/dusklight, revision 34a144a493b7f57adeb4034d382317c826eb5c8d.
+    Adapted for sensor timestamps and Wii motion; no Dusklight artwork is included.
+
 Not included, downloaded only with the player's consent from the official sources (see Setup > Prerequisites):
 - Visual Studio 2022 Build Tools (Microsoft licence terms),
 - Python (PSF licence),

@@ -609,10 +609,11 @@ inline std::span<const Desc> All() {
          {"Drempel ZL/ZR", "Trigger threshold"}, {"Hoe ver je een trekker indrukt voordat hij telt.", "How far a trigger must travel."},
          Kind::Slider, 0.05f, 0.95f, 0.05f, "%.2f", "", kNone, Apply::AtBoot, nullptr, Status::ExistsHidden, "input_bindings.h",
          L19_REF(trigger_threshold), nullptr, kAdvanced},
-        {"gyro_auto_calibrate", Tab::Besturing, kNoTab, L19_G("Klassiek en sticks", "Classic and sticks"), "input", "gyro_auto_calibrate",
-         {"Gyro vanzelf kalibreren", "Auto-calibrate gyro"}, {"Meet de afwijking van de gyro als de controller stil ligt.", "Measures gyro drift while the pad rests."},
-         Kind::Toggle, 0, 0, 0, nullptr, "true", kNone, Apply::AtBoot, nullptr, Status::ExistsHidden, "gamepad_source.cpp",
-         L19_REF(gyro_auto_calibrate), nullptr, kAdvanced},
+        {"gyro_deadband", Tab::Besturing, kNoTab, L19_G("Gyro", "Gyro"), "input", "gyro_deadband",
+         {"Gyro rustdrempel", "Gyro idle threshold"},
+         {"Negeert kleine sensorruis. Kalibreer voor nauwkeurig richten.", "Ignores small sensor offsets in every motion mode. Guided calibration reduces the threshold for finer aiming."},
+         Kind::Slider, 0, 0.05f, 0.001f, "%.3f rad/s", "0.02", kNone, Apply::Live, nullptr, Status::Exists, "gamepad_source.cpp",
+         L19_REF(gyro_deadband), nullptr, 0},
 
         // ================================================================== GAMEPLAY
         {"a_does_not_dash", Tab::Gameplay, kNoTab, L19_G("Experimenteel", "Experimental"), "input", "a_does_not_dash",

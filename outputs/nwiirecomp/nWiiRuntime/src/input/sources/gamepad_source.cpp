@@ -2,6 +2,7 @@
 #include "../game_observation.h"
 #include "../virtual_motion.h"
 #include "../input_bindings.h"
+#include "../aurora_pad_sensors.h"
 #include "input/controller_events.h"
 #include "runtime/config.h"
 #include <SDL.h>
@@ -97,6 +98,7 @@ struct CaptureDevice {
     SDL_JoystickID id = -1;
     uint32_t generation = 0;
     int applied_sensors = 0;
+    bool gyro_enabled = false, accel_enabled = false;
     uint64_t rumble_serial = 0;
     int type = 0;
     float gyro_rate = 0.0f;
@@ -126,11 +128,9 @@ void apply_requests(CaptureDevice& d, int slot) {
     if (want != d.applied_sensors) {
         const bool gyro_on = (want & (kWantGyroAccel | kWantGyroOnly)) != 0;
         const bool accel_on = (want & kWantGyroAccel) != 0;
-        const bool gyro_was = (d.applied_sensors & (kWantGyroAccel | kWantGyroOnly)) != 0;
-        const bool accel_was = (d.applied_sensors & kWantGyroAccel) != 0;
-        if (gyro_on != gyro_was) SDL_GameControllerSetSensorEnabled(d.controller, SDL_SENSOR_GYRO, gyro_on ? SDL_TRUE : SDL_FALSE);
-        if (accel_on != accel_was) SDL_GameControllerSetSensorEnabled(d.controller, SDL_SENSOR_ACCEL, accel_on ? SDL_TRUE : SDL_FALSE);
-        d.applied_sensors = want;
+        const bool gyro_ok = aurora_sensors::transition(d.controller, SDL_SENSOR_GYRO, gyro_on, d.gyro_enabled);
+        const bool accel_ok = aurora_sensors::transition(d.controller, SDL_SENSOR_ACCEL, accel_on, d.accel_enabled);
+        if (gyro_ok && accel_ok) d.applied_sensors = want;
     }
     const uint64_t r = hub.rumble[size_t(slot)].load();
     if ((r >> 48) != d.rumble_serial) {
@@ -218,7 +218,7 @@ void capture_controllers(const ControllerApi* api) {
         d.gyro_rate = api && api->gyro_rate ? api->gyro_rate(c) : 0.0f;
         const char* name = SDL_GameControllerName(c);
         std::snprintf(d.name, sizeof d.name, "%s", name ? name : "controller");
-        const bool gyro = SDL_GameControllerHasSensor(c, SDL_SENSOR_GYRO) && SDL_GameControllerHasSensor(c, SDL_SENSOR_ACCEL);
+        const bool gyro = aurora_sensors::has(c, SDL_SENSOR_GYRO) && aurora_sensors::has(c, SDL_SENSOR_ACCEL);
         log_controller("connected", slot, d, gyro);
         push_controller_event(ControllerEventKind::Connected, slot, d.name, pad_type_name(d.type), gyro);
     }
@@ -230,7 +230,7 @@ void capture_controllers(const ControllerApi* api) {
         p = PadSnapshot{};
         auto& d = st.slot[size_t(s)];
         if (!d.controller) continue;
-        calibration_device(s, d.id, SDL_GameControllerHasSensor(d.controller, SDL_SENSOR_GYRO) && SDL_GameControllerHasSensor(d.controller, SDL_SENSOR_ACCEL));
+        calibration_device(s, d.id, aurora_sensors::has(d.controller, SDL_SENSOR_GYRO) && aurora_sensors::has(d.controller, SDL_SENSOR_ACCEL));
         apply_requests(d, s);
         p.connected = true;
         p.instance_id = d.id;
@@ -249,10 +249,10 @@ void capture_controllers(const ControllerApi* api) {
         }
         d.used = d.used || (p.buttons & ~d.rest_buttons) != 0;
         for (int a = 0; a < kPadAxisCount; ++a) d.used = d.used || std::abs(int(p.axes[a]) - int(d.rest_axes[a])) > 8192;
-        p.has_gyro = SDL_GameControllerHasSensor(d.controller, SDL_SENSOR_GYRO) != SDL_FALSE;
-        p.has_accel = SDL_GameControllerHasSensor(d.controller, SDL_SENSOR_ACCEL) != SDL_FALSE;
+        p.has_gyro = aurora_sensors::has(d.controller, SDL_SENSOR_GYRO);
+        p.has_accel = aurora_sensors::has(d.controller, SDL_SENSOR_ACCEL);
         if ((d.applied_sensors & kWantGyroOnly) && p.has_gyro)
-            p.gyro_data_ok = SDL_GameControllerGetSensorData(d.controller, SDL_SENSOR_GYRO, p.gyro_data, 3) == 0;
+            p.gyro_data_ok = aurora_sensors::read(d.controller, SDL_SENSOR_GYRO, p.gyro_data, 3);
     }
     if (st.slot[0].controller && !st.slot[0].used) {
         for (int s = 1; s < 4; ++s) {
@@ -528,7 +528,7 @@ void GamepadSource::update(GameCubePadState pads[4], WiimoteState motes[4]) {
                 request_sensors(i, kWantGyroAccel);
                 drain_sensor_events(id, scratch); // claims the capture slot; no stale backlog
                 gyro[i].reset();
-                gyro[i].auto_calibrate = bind.gyro_auto_calibrate;
+                gyro[i].deadband = bind.gyro_deadband;
                 gyro[i].grip_tilt = double(bind.gyro_grip_tilt_deg) * 3.14159265358979323846 / 180.0;
                 sensor_id[i] = id;
                 sensors_on[i] = true;
@@ -587,7 +587,7 @@ void GamepadSource::update(GameCubePadState pads[4], WiimoteState motes[4]) {
             const GameContext ctx = g_guest_context.get();
             const Situation situation = classify(ctx, LiveFlags::read(i));
             gyro[i].filter_aim = situation == Situation::Aim || situation == Situation::Menu || situation == Situation::Event;
-            gyro[i].allow_bias_learning = gyro_bias_learning_allowed(ctx);
+            gyro[i].deadband = bind.gyro_deadband;
             if (dt_ok) {
                 const size_t n = gyro[i].produce(dt, frame.steps.data(), frame.steps.size());
                 float peak = 0.0f;
@@ -607,7 +607,7 @@ void GamepadSource::update(GameCubePadState pads[4], WiimoteState motes[4]) {
                     const float* b = gyro[i].bias();
                     std::printf("[Input] Gyro controller %d: %.0f samples/s, gyro bias %s (%.4f, %.4f, %.4f) rad/s\n", i,
                                 double(gyro[i].samples_received) / gyro_active_s[i],
-                                gyro[i].bias_valid() ? "estimated" : "not yet estimated (keep it still 1 s)",
+                                gyro[i].bias_valid() ? "guided calibration" : "factory calibration; use Controls > Gyro calibration if drifting",
                                 double(b[0]), double(b[1]), double(b[2]));
                     std::fflush(stdout);
                 }
@@ -947,7 +947,7 @@ void GamepadSource::update_switch_hd(int i, const PadSnapshot& snap, GameCubePad
             drain_sensor_events(id, scratch);
             gyro[i].reset();
             gyro_claim_s[i] = 0;
-            gyro[i].auto_calibrate = bind.gyro_auto_calibrate;
+            gyro[i].deadband = bind.gyro_deadband;
             gyro[i].grip_tilt = double(bind.gyro_grip_tilt_deg) * 3.14159265358979323846 / 180.0;
             sensor_id[i] = id;
             sensors_on[i] = true;
@@ -960,7 +960,7 @@ void GamepadSource::update_switch_hd(int i, const PadSnapshot& snap, GameCubePad
         float manual_bias[3];if(calibration_bias(id,calibration_serial[i],manual_bias))gyro[i].set_bias(manual_bias);
         for (const auto& e : scratch) gyro[i].add(e);
         gyro[i].filter_aim = situation == Situation::Aim || situation == Situation::Menu || situation == Situation::Event;
-        gyro[i].allow_bias_learning = gyro_bias_learning_allowed(ctx);
+        gyro[i].deadband = bind.gyro_deadband;
         if (dt_ok) {
             MeasuredSubStep steps[kMaxMeasuredSubSteps];
             const size_t n = gyro[i].produce(dt, steps, kMaxMeasuredSubSteps);

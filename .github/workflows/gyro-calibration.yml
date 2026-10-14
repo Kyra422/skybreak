@@ -23,6 +23,10 @@ jobs:
         run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_bias_test.cpp -o /tmp/gyro-bias-test
       - name: Check slow steering, guided calibration and reconnects
         run: /tmp/gyro-bias-test
+      - name: Compile gyro drift transition regression
+        run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_drift_test.cpp -o /tmp/gyro-drift-test
+      - name: Check ordinary play, idle drift, stalled sensors and calibrated precision
+        run: /tmp/gyro-drift-test
       - name: Compile tutorial message regression
         run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/message_context_test.cpp -o /tmp/message-test
       - name: Check tutorial confirmation, passive overlays and safe observation
@@ -38,6 +42,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install source-only input test headers
         run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libtomlplusplus-dev
+      - name: Compile Aurora sensor adapter regression
+        run: g++ -std=c++20 -O2 -pthread -DSDL_MAIN_HANDLED -I/usr/include/SDL2 -Ioutputs/nwiirecomp/nWiiRuntime/src tests/aurora_sensor_test.cpp -o /tmp/aurora-sensor-test
+      - name: Check sensor success, failures, retries and stale reads
+        run: /tmp/aurora-sensor-test
       - name: Compile production button mapping regression
         run: >-
           g++ -std=c++20 -O2 -pthread -I/usr/include/SDL2

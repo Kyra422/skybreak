@@ -1,14 +1,13 @@
-# SkyBreak 0.22.0 Alpha 2 — community testing
+# SkyBreak 0.23.0 Alpha 3 — community testing
 
 Use your own **Skyward Sword Wii USA 1.0 (SOUE01, revision 0)**. Extract the
 whole archive and run `SkyBreak-Setup.exe`. Setup checks tools and requests
 consent before installing missing prerequisites. Cancel/resume is supported.
 Save and close SkyBreak before updating; Setup waits for the game to close.
 
-Alpha 2 updates the installer: concurrent builds are blocked, the active
-CMake/Ninja output appears in the log view, and **Open build log** opens the
-actual diagnostic file. Gameplay is unchanged from Alpha 1; a successful
-Alpha 1 installation does not need rebuilding.
+Alpha 3 updates the gameplay runtime with gyro drift, mapping, tutorial,
+Timeshift and interpolation fixes. Updating from Alpha 1 or 2 requires a
+rebuild. The installer retains CMake log access and overlapping-build guards.
 
 ## First session
 

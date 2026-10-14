@@ -94,8 +94,9 @@ inline void correct_tilt(VirtualRemoteOrientation& o, const float accel[3], doub
 // One controller's sensor stream -> sub-steps for each InputManager update.
 class GyroMotionTracker {
 public:
-    bool auto_calibrate = true;
-    bool allow_bias_learning = true; // Frozen while the game uses a pointing/steering reference.
+    bool auto_calibrate = true; // Legacy setting: automatic in-play bias learning is disabled.
+    bool allow_bias_learning = false; // Legacy test/API compatibility; never learns during play.
+    float deadband = 0.02f; // rad/s, applied to every measured-motion context, including steering.
     bool filter_aim = false; // Set by the context-aware source; three-axis puzzles stay physical.
     // [input] gyro_grip_tilt (radians): the far edge is raised this much when the pad is held "level".
     // The virtual remote is the pad turned by this angle nose-down about its X axis (one fixed rotation
@@ -105,19 +106,17 @@ public:
     void reset() {
         samples_.clear();
         aim_filter_.reset();
-        allow_bias_learning = true;
         has_pending_ = false;
         have_gyro_ = have_accel_ = have_prev_t_ = false;
         last_gyro_[0] = last_gyro_[1] = last_gyro_[2] = 0.0f;
         last_accel_[0] = 0.0f; last_accel_[1] = float(kStandardGravity); last_accel_[2] = 0.0f;
         nominal_period_ = 1.0 / 250.0;
         samples_received = samples_delivered = 0; // per activation (the samples/s log line)
-        window_reset();
         // The bias estimate belongs to the device and survives a mode toggle; reset_bias() clears it.
     }
     // An explicitly applied still calibration is authoritative for this device.
     // Background stillness guesses must not silently replace it with a slow turn.
-    void set_bias(const float v[3]) { std::copy(v,v+3,bias_);bias_valid_=true;bias_manual_=true;window_reset();aim_filter_.reset(); }
+    void set_bias(const float v[3]) { std::copy(v,v+3,bias_);bias_valid_=true;bias_manual_=true;aim_filter_.reset(); }
     void reset_bias() { bias_[0] = bias_[1] = bias_[2] = 0.0f; bias_valid_ = bias_manual_ = false; bias_updates = 0; }
     // Drops queued samples (stalled producer: their interval cannot be delivered) but keeps the bias and
     // the last readings; the next sample starts a new time base.
@@ -182,7 +181,7 @@ public:
                     nominal_period_ += 0.05 * (std::clamp(dd, 0.0005, 0.05) - nominal_period_);
                 } else {
                     d[k] = 0; // A hardware gap is not a synthetic extra nominal-period rotation.
-                    window_reset();
+                    aim_filter_.reset();
                 }
             }
             prev_t_us_ = s.t_us;
@@ -221,15 +220,13 @@ public:
         for (size_t k = first; k < samples_.size(); ++k) {
             const Sample& s = samples_[k];
             if (!(d[k] > 0)) continue;
-            observe_still(s.gyro, s.accel, d[k]);
             float g[3] = {s.gyro[0], s.gyro[1], s.gyro[2]};
-            if (bias_valid_ && (auto_calibrate || bias_manual_))
+            if (bias_valid_)
                 for (int a = 0; a < 3; ++a) g[a] -= bias_[a];
             float rate[3], acc[3];
             controller_to_remote(g, rate);
             controller_accel_to_kpad(s.accel, acc);
-            if (filter_aim) aim_filter_.process(rate, d[k]);
-            else aim_filter_.reset();
+            aim_filter_.process(rate, d[k], gyro_idle_threshold(deadband, bias_valid_), filter_aim);
             if (grip_tilt != 0.0) {
                 const double c = std::cos(grip_tilt), sn = std::sin(grip_tilt);
                 for (float* v : {rate, acc}) {
@@ -298,54 +295,17 @@ private:
             have_accel_ = true;
         }
         else std::copy(last_accel_, last_accel_ + 3, s.accel);
-        if (samples_.size() < 4096) samples_.push_back(s);
-        ++samples_received;
-    }
-    void window_reset() {
-        win_time_ = 0;
-        win_sum_[0] = win_sum_[1] = win_sum_[2] = 0;
-    }
-    // Still-controller gyro bias: a >= 1 s window where the gyro stays within 0.06 rad/s of the window
-    // mean, the accelerometer reads 1 g (+-0.6 m/s^2) and does not move by more than 0.5 m/s^2. Window
-    // means below 0.05 rad/s per axis (2.9 deg/s; SDL already applies the factory calibration) update the
-    // bias (first one directly, then halfway). Slow yaw does NOT change gravity:
-    // the source must freeze learning during reference-based controls. Guided
-    // calibration also freezes these guesses until the device is reconnected.
-    void observe_still(const float g[3], const float a[3], double d) {
-        if (!auto_calibrate || !allow_bias_learning || bias_manual_) { window_reset(); return; }
-        if (!(d > 0)) return;
-        const double an = std::sqrt(double(a[0]) * a[0] + double(a[1]) * a[1] + double(a[2]) * a[2]);
-        bool ok = std::fabs(an - kStandardGravity) < 0.6;
-        if (ok && win_time_ > 0) {
-            for (int k = 0; k < 3; ++k) {
-                ok = ok && std::fabs(g[k] - win_sum_[k] / win_time_) < 0.06 &&
-                     std::fabs(a[k] - win_accel0_[k]) < 0.5;
-            }
-        }
-        if (!ok) {
-            window_reset();
-            if (std::fabs(an - kStandardGravity) >= 0.6) return;
-        }
-        if (win_time_ == 0) std::copy(a, a + 3, win_accel0_);
-        for (int k = 0; k < 3; ++k) win_sum_[k] += double(g[k]) * d;
-        win_time_ += d;
-        if (win_time_ >= 1.0) {
-            double mean[3];
-            bool small = true;
-            for (int k = 0; k < 3; ++k) {
-                mean[k] = win_sum_[k] / win_time_;
-                small = small && std::fabs(mean[k]) < 0.05;
-            }
-            if (small) {
-                for (int k = 0; k < 3; ++k)
-                    bias_[k] = bias_valid_ ? static_cast<float>(bias_[k] + 0.5 * (mean[k] - bias_[k]))
-                                           : static_cast<float>(mean[k]);
-                bias_valid_ = true;
-                ++bias_updates;
-            }
-            window_reset();
+        // Only a fresh gyro event advances rotation. Accelerometer-only reports
+        // update gravity but must never replay the last angular rate indefinitely
+        // if the gyro stream stalls or a sensor enable/read fails.
+        if (s.has_gyro) {
+            if (samples_.size() < 4096) samples_.push_back(s);
+            ++samples_received;
         }
     }
+    // No background bias estimation. Gravity cannot distinguish a steady yaw
+    // from a stationary sensor offset. Only explicit still calibration changes
+    // bias_, so normal play cannot poison the next aiming/steering session.
 
     std::vector<Sample> samples_;
     GyroAimFilter aim_filter_;
@@ -362,8 +322,6 @@ private:
     float bias_[3] = {0, 0, 0};
     bool bias_valid_ = false;
     bool bias_manual_ = false;
-    double win_time_ = 0, win_sum_[3] = {0, 0, 0};
-    float win_accel0_[3] = {0, 0, 0};
 };
 
 } // namespace nwii::runtime::input

@@ -16,6 +16,7 @@
 
 #include "input/controller_events.h"
 #include "../input/gyro_calibration.h"
+#include "../input/gyro_aim_filter.h"
 #include "../input/hd_translator.h" // path: CTRL18-CAM (lib include path)
 #include "runtime/gx/glyph_sets.h"
 #include "runtime/gx/hd_textures.h"
@@ -499,6 +500,10 @@ void RenderGyroCalibration(Settings& e,const ControlsTabHost& h) {
     const auto track=[&](const std::string& t){if(h.track)h.track(t);};
     ImGui::Checkbox(english ? "Gravity-relative aiming" : Label("gyro_player_space"), &e.gyro_player_space);
     Tip("gyro_player_space");track("Mikken volgt je houding");
+    ImGui::SliderFloat(english ? "Gyro idle threshold (rad/s)" : "Gyro rustdrempel (rad/s)", &e.gyro_deadband, 0.0f, 0.05f, "%.3f");
+    track("gyro_idle_threshold");
+    hint(english ? "Small sensor offsets are ignored in all motion modes. Guided calibration automatically reduces the threshold for fine movement. Automatic in-game drift learning is disabled."
+                 : "Kleine sensorafwijkingen worden genegeerd. Verlaag dit na kalibratie voor fijnere bewegingen. Er wordt tijdens het spelen geen drift aangeleerd.");
     section(english ? "Gyro calibration" : "Gyro kalibreren");track("Gyro kalibreren");
     runtime::input::ControllerStatus pads[4];runtime::input::controller_status(pads);
     int& cal_slot=st.gyro_cal_slot;
@@ -534,6 +539,8 @@ void RenderGyroCalibration(Settings& e,const ControlsTabHost& h) {
             const float dt=float(now-last)*.001f;
             float rates[3],accel[3],mapped[3];
             for(int a=0;a<3;++a){const float sign=a==1?1.f:-1.f;rates[a]=sign*(status.sample.latest[a]-(status.applied?status.bias[a]:0));accel[a]=-sign*status.sample.accel[a]/9.80665f;}
+            runtime::input::GyroAimFilter preview_filter;
+            preview_filter.process(rates,dt,runtime::input::gyro_idle_threshold(e.gyro_deadband,status.applied),false);
             preview_aim.map(rates,accel,dt,mapped);
             px=std::clamp(px-(e.gyro_player_space?mapped[1]:rates[1])*dt*2,-1.f,1.f);
             py=std::clamp(py+(e.gyro_player_space?mapped[0]:rates[0])*dt*2,-1.f,1.f);

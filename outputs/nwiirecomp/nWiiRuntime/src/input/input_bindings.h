@@ -344,6 +344,7 @@ struct InputBindings {
     int left_deadzone = 8000, right_deadzone = 8000; // raw SDL axis units, as before INPUT10
     int trigger_threshold = 16384;                   // trigger counts as pressed above this
     bool gyro_at_start = false;      // [input] gamepad_motion = "gyro"
+    float gyro_deadband = 0.02f; // rad/s; zero disables idle suppression
     bool gyro_auto_calibrate = true;
     float gyro_grip_tilt_deg = 0.0f; // [input] gyro_grip_tilt
     int keyboard_overrides = 0, gamepad_overrides = 0;
@@ -478,6 +479,7 @@ inline InputBindings resolve_input_bindings(const Config& cfg, bool print = true
     // CTRL18-INPUT: wii-motion starts with the gyro as the remote; switch-hd starts with gyro AIMING per [input] gyro_aim.
     if (b.pad_preset == PadPreset::WiiMotion) b.gyro_at_start = true;
     else if (b.pad_preset == PadPreset::SwitchHd) b.gyro_at_start = b.gyro_aim;
+    b.gyro_deadband = cfg.gyro_deadband;
     b.gyro_auto_calibrate = cfg.gyro_auto_calibrate;
     b.gyro_grip_tilt_deg = cfg.gyro_grip_tilt;
     char summary[360];
@@ -487,7 +489,7 @@ inline InputBindings resolve_input_bindings(const Config& cfg, bool print = true
                   b.keyboard_overrides, b.gamepad_overrides, b.mouse_sensitivity, b.aim_stick_speed,
                   b.left_deadzone / 32768.0, b.right_deadzone / 32768.0, b.trigger_threshold / 32768.0,
                   b.gyro_at_start ? "gyro" : "off", b.gyro_grip_tilt_deg,
-                  b.gyro_auto_calibrate ? "" : " (no gyro auto-calibration)");
+                  " (guided gyro calibration; no in-play bias learning)");
     note(std::string(summary) + "; " + presets_text);
     if (print)
         for (const auto& m : b.messages) std::cout << "[Input] " << m << '\n';

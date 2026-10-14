@@ -344,6 +344,7 @@ static void load_input10(const toml::table& tbl, Config& cfg) {
         }
         out = static_cast<float>(*v);
     };
+    number("gyro_deadband", cfg.gyro_deadband, 0.0, 0.05);
     number("gyro_grip_tilt", cfg.gyro_grip_tilt, -60.0, 60.0);
     number("mouse_sensitivity", cfg.mouse_sensitivity, 0.05, 20.0);
     number("aim_stick_speed", cfg.aim_stick_speed, 0.1, 2.0);

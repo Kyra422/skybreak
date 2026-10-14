@@ -85,6 +85,7 @@ struct Settings {
     bool quick_items = true;             // [input] quick_items
     bool fire_on_release = false;        // [input] fire_on_release
     float trigger_threshold = -1.0f;     // [input] trigger_threshold (< 0 = built-in)
+    float gyro_deadband = 0.02f; // rad/s; zero disables idle suppression
     bool gyro_auto_calibrate = true;     // [input] gyro_auto_calibrate
     bool mouse_invert_y = false;         // [mouse] invert_y
     int auto_recentre_s = 0;             // [camera] auto_recentre_s (CTRL18-CAM)

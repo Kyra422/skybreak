@@ -36,5 +36,10 @@ Motion aiming adapts the EMA/deadband approach in Dusklight's
 revision `34a144a493b7f57adeb4034d382317c826eb5c8d`, under
 [CC0-1.0](https://github.com/TwilitRealm/dusklight/blob/34a144a493b7f57adeb4034d382317c826eb5c8d/LICENSE.md).
 The adaptation uses sensor timestamps and preserves the Wii MotionPlus path.
-Aurora's SDL3 sensor interface was inspected as a reference; Aurora itself is
-not linked into this runtime.
+The controller sensor path adapts Aurora's PAD sensor functions from
+[`lib/dolphin/pad/pad.cpp`](https://github.com/encounter/aurora/blob/51797212b9283e91cc03c273854d63b2421d8490/lib/dolphin/pad/pad.cpp),
+revision `51797212b9283e91cc03c273854d63b2421d8490` (MIT, copyright Luke Street).
+The notice is preserved in
+`outputs/nwiirecomp/nWiiRuntime/THIRD_PARTY_AURORA_LICENSE.txt`.
+This controller-only adaptation uses SDL2; Aurora's complete SDL3 runtime,
+router and graphics layer are not linked into SkyBreak.

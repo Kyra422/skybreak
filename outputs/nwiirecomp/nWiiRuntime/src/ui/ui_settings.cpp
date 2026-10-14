@@ -131,6 +131,7 @@ Settings FromConfig(const runtime::Config& c) {
     s.quick_items = c.quick_items;
     s.fire_on_release = c.fire_on_release;
     s.trigger_threshold = c.trigger_threshold;
+    s.gyro_deadband = c.gyro_deadband;
     s.gyro_auto_calibrate = c.gyro_auto_calibrate;
     s.mouse_invert_y = c.mouse_invert_y;
     s.auto_recentre_s = in::g_free_camera.auto_recentre_s.load();
@@ -216,6 +217,7 @@ void ToConfig(const Settings& s, runtime::Config& c) {
     c.quick_items = s.quick_items;
     c.fire_on_release = s.fire_on_release;
     c.trigger_threshold = s.trigger_threshold;
+    c.gyro_deadband = s.gyro_deadband;
     c.gyro_auto_calibrate = s.gyro_auto_calibrate;
     c.mouse_invert_y = s.mouse_invert_y;
     in::g_free_camera.auto_recentre_s.store(s.auto_recentre_s);

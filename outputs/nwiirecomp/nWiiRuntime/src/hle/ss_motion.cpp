@@ -172,6 +172,15 @@ void deliver_pending_callback(CPUContext& ctx, int32_t channel, Channel& c) {
 void require_finite_output(CPUContext& ctx, uint32_t status) {
     for (unsigned i=0;i<15;++i)
         require(std::isfinite(ctx.mmu.read_f32(status+0xB0+i*4)), "SS motion: nonfinite original KMPLS output");
+    // KMPLS's exponential filter leaves extremely small rates long after a
+    // controller stops. The game's single-precision reciprocal-square-root
+    // swing calculation can overflow on their squared subnormal magnitude.
+    // This floor is far below one MotionPlus ADC count (about 1.8e-4 rev/s).
+    // Deliver an actual zero at rest without discarding meaningful movement.
+    for (unsigned axis = 0; axis < 3; ++axis) {
+        const uint32_t p = status + 0xB0 + axis * 4;
+        if (std::fabs(ctx.mmu.read_f32(p)) < 1.0e-7f) ctx.mmu.write_f32(p, 0.0f);
+    }
 }
 // Producer history path (src/input/virtual_motion.h). The InputManager records
 // every fresh producer step; a guest that reads KPAD less often (a slow scene)
@@ -277,22 +286,32 @@ bool ss_motion_read(CPUContext& ctx, int32_t channel, const input::MotionSample&
         ctx.mmu.read8(status+0x5D)==0;
     if (!c.available || sample.sequence==c.sequence) return false;
     if (c.sequence && (sample.sequence<c.sequence || sample.monotonic_ns<=c.timestamp)) return false;
-    // A steady intentional turn can look still to both bias learners. Synthetic
-    // inputs have no hardware bias; measured inputs already use the producer's
-    // guided bias or must preserve the game's active steering reference. Freeze
-    // KMPLS learning in those cases too, restoring the game's setting on exit.
+    // SDL already applies the device calibration; SkyBreak applies an optional
+    // explicit user calibration. Never run a second adaptive Wii bias learner
+    // on that stream: it can learn a slow yaw during ordinary play and leave a
+    // persistent opposing rate after the game enters aiming or steering.
     // Offset 198 and channel stride 3504 are the original KMPLSReset/Read layout.
     struct DriftGuard {
         CPUContext& ctx; uint32_t address; uint8_t saved;
         DriftGuard(CPUContext& c, uint32_t a, bool freeze) : ctx(c), address(a), saved(c.mmu.read8(a)) {
-            if (freeze) ctx.mmu.write8(address, 0);
+            if (freeze) {
+                ctx.mmu.write8(address, 0);
+                // read_mpls always subtracts its stored bias, even with learning
+                // disabled. Its channel data begins at workarea + 8; offsets
+                // 368/372/376 are the three learned zero-drift offsets. Reset
+                // these for our already calibrated stream so
+                // a previous calibration cannot inject a permanent reverse turn.
+                const uint32_t base = address - 198 + 8;
+                for (unsigned axis = 0; axis < 3; ++axis) {
+                    ctx.mmu.write_f32(base + 368 + axis * 4, 0.0f);
+                }
+            }
         }
         ~DriftGuard() { ctx.mmu.write8(address, saved); }
     } drift(ctx, state.memory.workarea + channel * 3504 + 198,
             (sample.kind == input::MotionSourceKind::Virtual && !sample.sensor_measured &&
              !(std::getenv("NWII_VIRTUAL_ZERO_DRIFT") && std::getenv("NWII_VIRTUAL_ZERO_DRIFT")[0] == '0')) ||
-            (sample.sensor_measured && (!input::gyro_bias_learning_allowed(input::g_guest_context.get()) ||
-                                       input::calibration_status(channel).applied)));
+            sample.sensor_measured);
     if (c.sequence && read_history(ctx,channel,c,sample,status)) return true;
     double dt=sample.dt_seconds;
     if (c.sequence) {
@@ -314,8 +333,7 @@ bool ss_motion_read(CPUContext& ctx, int32_t channel, const input::MotionSample&
     }
     invoke(ctx,kRead,channel,status+0xB0,(c.slot+2)%16,1,status,dt);
     c.slot=(c.slot+1)%16;
-    for (unsigned i=0;i<15;++i)
-        require(std::isfinite(ctx.mmu.read_f32(status+0xB0+i*4)), "SS motion: nonfinite original KMPLS output");
+    require_finite_output(ctx,status);
     return true;
 } catch (const GuestStopped&) { // STAB20: stopped mid-read: no motion this read (the KPAD caller keeps its status)
     return false;
