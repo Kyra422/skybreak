@@ -23,6 +23,10 @@ jobs:
         run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/gyro_bias_test.cpp -o /tmp/gyro-bias-test
       - name: Check slow steering, guided calibration and reconnects
         run: /tmp/gyro-bias-test
+      - name: Compile tutorial message regression
+        run: g++ -std=c++20 -O2 -pthread -Ioutputs/nwiirecomp/nWiiRuntime/src -Ioutputs/nwiirecomp/nWiiRuntime/include tests/message_context_test.cpp -o /tmp/message-test
+      - name: Check tutorial confirmation, passive overlays and safe observation
+        run: /tmp/message-test
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

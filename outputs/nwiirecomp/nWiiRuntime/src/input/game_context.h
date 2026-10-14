@@ -48,7 +48,8 @@ enum : uint16_t {
 };
 // Act_IE_e values of the HUD prompts (d_lyt_unknowns.h / d_lyt_do_button.h; Act_Do 0..92 == Act_IE 0..92).
 enum : int32_t {
-    kPromptJump = 1, kPromptDropDown = 2, kPromptLetGo = 3, kPromptRoll = 8, kPromptSwim = 23, kPromptLeap = 24,
+    kPromptJump = 1, kPromptDropDown = 2, kPromptLetGo = 3, kPromptRoll = 8, kPromptGrab = 11,
+    kPromptCatch = 38, kPromptGrab2 = 72, kPromptGrab3 = 87, kPromptSwim = 23, kPromptLeap = 24,
     kPromptDash = 25, kPromptGetOut = 26, kPromptSailcloth = 40, kPromptPutAway = 41, kPromptTurn = 45,
     kPromptDrawBow = 48, kPromptSwing = 52, kPromptBalance = 53, kPromptFatalBlow = 67, kPromptJumpDown = 68,
     kPromptStrum = 69, kPromptRelease = 71, kPromptDive = 85, kPromptEtcDash = 95, kPromptEtcDodge = 101,
@@ -68,6 +69,7 @@ struct GameContext {
     uint16_t item_state = 0;     // LINK +0x43CA
     int32_t prompt_a = kPromptNone; // what A does now (Act_IE_e, ss_a_button_prompt)
     int32_t event_state = -1;    // EventManager mState (-1 = no manager, 0 = no event)
+    bool message_known = false, message_modal = false; // actual message window, separate from event scripts
     int32_t cam_mode = -1, cam_handler = -1; // game camera mode / handler (-1 = unknown)
     // Slots of LytDoButtonRelated other than A, as far as they can be read between frames (see ss_boot.cpp; -1 =
     // unknown, kPromptNone = nothing shown). Index = DO_BUTTON_* slot (A 0, B 1, C 2, Z 3, NUN_STK 4, REMOCON_BG 5,
@@ -99,7 +101,7 @@ inline bool gyro_bias_learning_allowed(const GameContext& c) {
     const bool steering = c.riding == 2 || (c.item_state == kItemBeetle && c.cam_handler == 6) ||
                           (c.action_flags & (kActInWater | kActTightRope)) || c.action == 0x12 || c.action == 0x13;
     const bool puzzle = c.prompt_slot[2] == 130 || c.prompt_slot[3] == 129;
-    return !(aiming || wheel || steering || puzzle || c.event() || c.carrying());
+    return !(aiming || wheel || steering || puzzle || c.event() || c.message_modal || c.carrying());
 }
 
 class GameContextChannel {

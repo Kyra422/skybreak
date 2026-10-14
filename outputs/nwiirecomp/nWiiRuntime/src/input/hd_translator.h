@@ -109,6 +109,7 @@ inline bool context_wheel(const GameContext& c) {
 inline bool context_lockon(const GameContext& c) { return c.cam_mode == 1 || c.cam_mode == 6 || c.cam_mode == 9; }
 
 inline Situation classify(const GameContext& c, const LiveFlags& l) {
+    if (c.valid && c.message_modal) return Situation::Event;
     // SOUE01 Act_IE 129 = View lock, 130 = Reset position. These two HUD prompts
     // identify the boss-key manipulation screen, even though its cursor is visible.
     if (c.valid && (c.prompt_slot[2] == 130 || c.prompt_slot[3] == 129) && !l.point_center)
@@ -139,6 +140,10 @@ inline int32_t a_action(const GameContext& c) {
 inline bool a_is_dash(const GameContext& c) {
     const int32_t a = a_action(c);
     return a == kPromptDash || a == kPromptEtcDash;
+}
+inline bool flight_action_is_button(const GameContext& c) {
+    const int32_t prompt = a_action(c);
+    return prompt == kPromptCatch || prompt == kPromptGrab || prompt == kPromptGrab2 || prompt == kPromptGrab3;
 }
 inline bool prompt_is_cancel(int32_t p) {
     return p == kPromptPutAway || p == kPromptLetGo || p == kPromptGetOut || p == kPromptRelease ||
@@ -367,6 +372,8 @@ public:
 
     // Buttons and button-driven gestures of the common intents.
     void buttons(const CoreIn& in, const GameContext& ctx, Situation s, VirtualGestureController& g, WiiOut& out) {
+        if (ctx.message_modal && !message_was_modal_) g.reset(); // no queued flap/swing through a confirmation window
+        message_was_modal_ = ctx.message_modal;
         const bool e_action = in.action && !prev_.action, e_dash = in.dash && !prev_.dash, e_harp = in.harp && !prev_.harp;
         const bool e_shield = in.shield && !prev_.shield, e_thrust = in.thrust && !prev_.thrust;
         const bool e_recentre = in.recentre && !prev_.recentre;
@@ -384,7 +391,7 @@ public:
         const bool moving = in.mx * in.mx + in.my * in.my > 0.04f;
         const bool dt_ok = in.dt > 0.0 && in.dt <= 0.1;
         // A
-        if (s == Situation::Flight && ctrl18_rule_on("FLAP")) {
+        if (s == Situation::Flight && !flight_action_is_button(ctx) && ctrl18_rule_on("FLAP")) {
             // Loftwing flap: any remote swing of >= 2 rev/s (fn_129_A0E0); a sideways out-and-back keeps the pointing
             // pitch and the roll (= the steering) unchanged. A itself would be the Spiral Charge.
             if (e_action) { g.swing(flap_right_ ? 1.0 : -1.0, 0.0); flap_right_ = !flap_right_; ctrl18_note_move("Klappen"); }
@@ -582,6 +589,7 @@ public:
 private:
     enum class CarryStep { Idle, Stance, Fire, Done };
     CoreIn prev_{};
+    bool message_was_modal_ = false;
     Situation last_ = Situation::Menu;
     bool dash_latched_ = false, cancel_latched_ = false, b_cancel_latched_ = false, rest_pending_ = false,
          flap_right_ = true;

@@ -828,6 +828,41 @@ int main(int argc, char** argv) {
         check(19,cfg.preset_gamepad==expected,"legacy gyro-only settings migrate without overriding explicit layouts");
     }
 
+
+    std::printf("U19 Loftwing tutorial prompts and catch actions on an Xbox HD layout\n");
+    cfg.gamepad_hd_bindings.clear();cfg.gamepad_motion="gyro";cfg.gyro_aim=true;
+    has_sensors=false;g_gamepad_motion_mode.store(0);set_presets("switch-hd","kbm");
+    for(int prompt:{11,38,72,87}) {
+        GameContext flight{};flight.riding=2;flight.cam_handler=6;flight.prompt_a=prompt;
+        clean(flight);buttons[SDL_CONTROLLER_BUTTON_B]=1;step(3);
+        check(19,(last.buttons&kWiiA)!=0 && !(last.buttons&kWiiB),
+              "Xbox B at a Loftwing grab/catch prompt sends Wii A without braking");
+        check(19,!g_virtual_gesture[0].remote_active(),"grabbing does not also start a wing flap");
+    }
+    GameContext dialogue{};dialogue.riding=2;dialogue.cam_handler=6;
+    dialogue.message_known=true;dialogue.message_modal=true;dialogue.event_state=0;
+    clean(dialogue);buttons[SDL_CONTROLLER_BUTTON_B]=1;step(3);
+    check(19,(last.buttons&kWiiA)!=0 && !(last.buttons&kWiiB),
+          "Xbox B confirms a tutorial message even when the global event manager is idle");
+    check(19,!g_virtual_gesture[0].remote_active(),"message confirmation does not also flap the Loftwing");
+    dialogue.message_modal=false;clean(dialogue);buttons[SDL_CONTROLLER_BUTTON_B]=1;step(3);
+    check(19,(last.buttons&(kWiiA|kWiiB))==0 && g_virtual_gesture[0].remote_active(),
+          "ordinary flying and passive tutorial overlays keep the wing-flap action");
+    dialogue.message_modal=true;context(dialogue);step(3);
+    check(19,(last.buttons&kWiiA)!=0 && !(last.buttons&kWiiB) && !g_virtual_gesture[0].remote_active(),
+          "opening a tutorial message cancels an already queued flap without applying the brake");
+    dialogue.message_modal=false;
+    clean(dialogue);buttons[SDL_CONTROLLER_BUTTON_A]=1;step(3);
+    check(19,(last.buttons&kWiiB)!=0 && !(last.buttons&kWiiA),"Xbox A still brakes in the HD flight layout");
+    clean(dialogue);buttons[SDL_CONTROLLER_BUTTON_Y]=1;step(3);
+    check(19,(last.buttons&kWiiA)!=0 && !(last.buttons&kWiiB),"Xbox Y still sends the spiral-charge button");
+    clean(dialogue);keys[SDL_SCANCODE_E]=1;step(3);
+    check(19,g_virtual_gesture[0].remote_active(),"keyboard E still flaps during normal flight");
+    dialogue.prompt_a=kPromptCatch;clean(dialogue);keys[SDL_SCANCODE_E]=1;step(3);
+    check(19,(last.buttons&kWiiA)!=0 && !(last.buttons&kWiiB),"keyboard action can grab a target while flying");
+    check(19,!g_virtual_gesture[0].remote_active(),"keyboard grabbing does not also start a flap");
+    release_all();cfg.gamepad_motion="off";cfg.gyro_aim=false;
+
     std::printf("%s %u/%u checks\n", failures ? "FAIL" : "PASS", checks - failures, checks);
     return failures ? 1 : 0;
 }

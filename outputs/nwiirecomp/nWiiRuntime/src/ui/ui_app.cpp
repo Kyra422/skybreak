@@ -92,7 +92,7 @@ namespace {
 namespace fs = std::filesystem;
 using runtime::Config;
 
-constexpr const char* kVersion = "0.22.0 Preview 4";
+constexpr const char* kVersion = "0.22.0 Preview 5";
 
 // ---------------------------------------------------------------------------------------- look
 const ImU32 kGold = IM_COL32(236, 200, 120, 255);
@@ -2051,6 +2051,8 @@ struct AppHost final : autotest::Host {
         if (q == "cursor_shown") return b01(SDL_ShowCursor(SDL_QUERY) == SDL_ENABLE);
         if (q == "keyboard_focus") return b01(g.window && SDL_GetKeyboardFocus() == g.window);
         if (q == "wii_buttons") return std::to_string(runtime::input::InputManager::get().get_wiimote_state(0).buttons);
+        if (q == "message_known") return b01(runtime::input::g_guest_context.get().message_known);
+        if (q == "message_modal") return b01(runtime::input::g_guest_context.get().message_modal);
         if (q == "ir_x") return f(runtime::input::InputManager::get().get_wiimote_state(0).ir_x);
         if (q == "ir_y") return f(runtime::input::InputManager::get().get_wiimote_state(0).ir_y);
         if (q == "mpls_pointer") return b01(runtime::input::g_guest_motionplus_pointer[0].load());

@@ -6,6 +6,7 @@
 #include "../input/sources/boot_replay_source.h"
 #include "../input/game_observation.h"
 #include "../input/game_context.h" // CTRL18-INPUT: control context (read-only)
+#include "../input/message_context.h"
 #include "../input/virtual_motion.h"
 #include "runtime/camera_stick.h" // CTRL18-CAM: per-frame tick (free camera sample, rumble)
 #include "runtime/cpu_context.h"
@@ -272,6 +273,11 @@ static void publish_game_context(CPUContext& ctx, uint32_t link, bool link_ok, b
     c.valid = true;
     c.title = title;
     c.player = link_ok && !title;
+    const auto message = nwii::runtime::input::read_message_context(
+        [&](uint32_t address) { return ctx.mmu.read32(address); },
+        [&](uint32_t address) { return ctx.mmu.read8(address); }, valid);
+    c.message_known = message.known;
+    c.message_modal = message.modal;
     if (link_ok) {
         c.riding = ctx.mmu.read8(link + 0x339);
         c.sword_states = ctx.mmu.read32(link + 0x348);
