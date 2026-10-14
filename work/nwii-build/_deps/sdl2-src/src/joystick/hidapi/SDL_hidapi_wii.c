@@ -150,6 +150,8 @@ typedef struct
     SDL_bool m_bReportSensors;
     SDL_bool m_bSkyBreakIR;
     Uint16 m_unIRSerial;
+    Uint32 m_unIRDiagnosticTicks;
+    SDL_bool m_bIRStatusSeen, m_bIRStatusEnabled;
     Uint8 m_rgucReadBuffer[k_unWiiPacketDataLength];
     Uint32 m_unLastInput;
     Uint32 m_unLastStatus;
@@ -898,6 +900,18 @@ static void SkyBreakPostIR(SDL_DriverWii_Context *ctx, SDL_Joystick *joystick, c
 {
     const SkyBreakWiiIR ir = SkyBreakDecodeWiiIR(bytes, 10);
     if (!ctx->m_bSkyBreakIR) return;
+    /* Bounded diagnostics distinguish an empty camera from a decoder/transport
+       failure without logging every 100 Hz motion report. */
+    {
+        const Uint32 ticks = SDL_GetTicks();
+        if (!ctx->m_unIRSerial || SDL_TICKS_PASSED(ticks, ctx->m_unIRDiagnosticTicks + 5000)) {
+            ctx->m_unIRDiagnosticTicks = ticks;
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "SkyBreak Wii IR: report 37, dots=%d, pair=%s, bytes=%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+                ir.count, ir.valid ? "yes" : "no", bytes[0], bytes[1], bytes[2], bytes[3], bytes[4],
+                bytes[5], bytes[6], bytes[7], bytes[8], bytes[9]);
+        }
+    }
     if (ir.valid) {
         SDL_PrivateJoystickAxis(joystick, 6, (Sint16)(ir.centre_x * 65534.0f - 32767.0f));
         SDL_PrivateJoystickAxis(joystick, 7, (Sint16)(ir.centre_y * 65534.0f - 32767.0f));
@@ -929,7 +943,7 @@ static int HIDAPI_DriverWii_SetJoystickSensorsEnabled(SDL_HIDAPI_Device *device,
         if (ctx->m_bSkyBreakIR && enabled && !SkyBreakConfigureIR(ctx)) {
             /* Preserve MotionPlus if the camera failed; the UI reports no IR. */
             ctx->m_bSkyBreakIR = SDL_FALSE;
-            SDL_LogWarn(SDL_LOG_CATEGORY_INPUT, "SkyBreak Wii: IR initialization failed; MotionPlus remains active");
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "SkyBreak Wii: IR initialization failed; MotionPlus remains active");
         }
         if (!enabled) SDL_PrivateJoystickAxis(joystick, 10, 0);
         ResetButtonPacketType(ctx);
@@ -1485,6 +1499,15 @@ static void HandleStatus(SDL_DriverWii_Context *ctx, SDL_Joystick *joystick)
     if (ctx->m_eExtensionControllerType != k_eWiiExtensionControllerType_WiiUPro) {
         /* Wii U has separate battery level tracking */
         UpdatePowerLevelWii(joystick, ctx->m_rgucReadBuffer[6]);
+    }
+
+    if (ctx->m_bSkyBreakIR && ctx->m_bReportSensors) {
+        const SDL_bool camera = ctx->m_rgucReadBuffer[3] & 0x08 ? SDL_TRUE : SDL_FALSE;
+        if (!ctx->m_bIRStatusSeen || camera != ctx->m_bIRStatusEnabled) {
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "SkyBreak Wii IR: remote status camera=%s", camera ? "enabled" : "disabled");
+            ctx->m_bIRStatusSeen = SDL_TRUE;
+            ctx->m_bIRStatusEnabled = camera;
+        }
     }
 
     /* The report data format has been reset, need to update it */

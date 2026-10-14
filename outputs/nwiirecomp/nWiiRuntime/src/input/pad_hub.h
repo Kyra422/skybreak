@@ -21,6 +21,26 @@ namespace nwii::runtime::input {
 inline constexpr int kPadButtonCount = 21; // SDL_CONTROLLER_BUTTON_MAX (SDL 2.28)
 inline constexpr int kPadAxisCount = 6;    // SDL_CONTROLLER_AXIS_MAX
 
+enum class WiiIRStatus { Disconnected, Starting, Unavailable, Waiting, Stalled, NoBar, Visible };
+inline WiiIRStatus wii_ir_status(bool supported,bool sensors,bool seen,bool live,bool valid) {
+    if(!sensors) return WiiIRStatus::Starting;
+    if(!supported) return WiiIRStatus::Unavailable;
+    if(!seen) return WiiIRStatus::Waiting;
+    if(!live) return WiiIRStatus::Stalled;
+    return valid ? WiiIRStatus::Visible : WiiIRStatus::NoBar;
+}
+inline const char* wii_ir_status_text(WiiIRStatus status) {
+    switch(status) {
+    case WiiIRStatus::Starting: return "Sensor bar: starting camera";
+    case WiiIRStatus::Unavailable: return "Sensor bar: IR input unavailable";
+    case WiiIRStatus::Waiting: return "Sensor bar: waiting for camera reports";
+    case WiiIRStatus::Stalled: return "Sensor bar: camera reports stopped";
+    case WiiIRStatus::NoBar: return "Sensor bar: not visible (camera reports received)";
+    case WiiIRStatus::Visible: return "Sensor bar: visible (physical IR)";
+    default: return "Wii Remote disconnected";
+    }
+}
+
 struct PadSnapshot {
     bool connected = false;
     int32_t instance_id = -1;   // SDL_JoystickID
@@ -29,6 +49,7 @@ struct PadSnapshot {
     int16_t axes[kPadAxisCount] = {};
     bool wii_remote = false, has_nunchuk = false;
     bool ir_supported=false, ir_valid=false;
+    WiiIRStatus ir_status=WiiIRStatus::Disconnected;
     float ir_x=0.5f, ir_y=0.5f, ir_horizon_x=1.0f, ir_horizon_y=0.0f;
     bool has_gyro = false, has_accel = false;
     bool gyro_data_ok = false;  // legacy pointer modes 3/4: newest gyro value (SDL_GameControllerGetSensorData)
@@ -63,7 +84,7 @@ private:
     uint32_t back_ = 0, front_ = 2;
 };
 
-enum class PadBusy : int { None = 0, Init = 1, Update = 2, Capture = 3 };
+enum class PadBusy : int { None = 0, Init = 1, Update = 2, Capture = 3, WiiSensorSetup = 4 };
 
 struct PadHub {
     TripleBuffer<PadSnapshotSet> snapshots;
@@ -82,6 +103,15 @@ struct PadHub {
     std::array<std::atomic<uint64_t>, 4> rumble{};
 };
 
+inline constexpr uint64_t kWiiSensorSetupTimeoutMs=4000;
+inline uint64_t pad_input_timeout_ms(int what) {
+    return what==int(PadBusy::WiiSensorSetup) ? kWiiSensorSetupTimeoutMs : 250;
+}
+inline bool pad_snapshot_stale(const PadHub& hub,uint64_t now) {
+    const auto since=hub.busy_since_ms.load();
+    return since && now>since && now-since>pad_input_timeout_ms(hub.busy_what.load());
+}
+
 inline PadHub& pad_hub() {
     static PadHub* hub = new PadHub; // never freed: the controller thread may outlive main() on a stuck driver
     return *hub;
@@ -95,6 +125,7 @@ inline uint64_t pad_now_ms() {
 inline constexpr int kWiiRemotePadType = 100; // Host-only type; never passed to SDL.
 inline std::atomic<bool> g_wii_remote_active[4];
 inline std::atomic<bool> g_wii_sensorbar_visible[4];
+inline std::atomic<WiiIRStatus> g_wii_ir_status[4];
 
 // SDL_GameControllerType (SDL 2.28 numbering) -> short name for logs and the UI.
 inline const char* pad_type_name(int type) {

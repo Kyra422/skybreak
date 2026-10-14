@@ -1,6 +1,8 @@
 // LAUNCH19: the SkyBreak settings page (see ui_settings_page.h). Layout ported from the LAUNCH19 mockup tool
 // (work/launcher19/mockup/mockup.cpp, which drew the same catalog on the CPU), now live: input, dialogs, sub page.
 #include "ui_settings_page.h"
+#include "../input/pad_hub.h"
+#include "input/controller_events.h"
 
 #include <algorithm>
 #include <cfloat>
@@ -1481,7 +1483,18 @@ Result Draw(State& st, Host& h, ImVec2 a, ImVec2 b) {
     } else {
         const float split = pa.x + (pb.x - pa.x) * 0.565f;
         dl->AddLine(ImVec2(split, pa.y + pg.P(16)), ImVec2(split, pb.y - pg.P(16)), A(h.accent, 0.22f), pg.P(1));
-        const ImVec2 la(pa.x + pg.P(14), pa.y + pg.P(12)), lb(split - pg.P(14), pb.y - pg.P(12));
+        float wii_banner=0;
+        if(st.tab==3) {
+            runtime::input::ControllerStatus pads[4];runtime::input::controller_status(pads);
+            if(pads[0].connected && std::strcmp(pads[0].type,"Wii Remote")==0) {
+                const auto status=runtime::input::g_wii_ir_status[0].load();
+                Text(dl,h.f.small,ImVec2(pa.x+pg.P(16),pa.y+pg.P(12)),
+                     status==runtime::input::WiiIRStatus::Visible?kGreen:kOrange,
+                     runtime::input::wii_ir_status_text(status));
+                wii_banner=pg.P(28);
+            }
+        }
+        const ImVec2 la(pa.x + pg.P(14), pa.y + pg.P(12)+wii_banner), lb(split - pg.P(14), pb.y - pg.P(12));
         if (input && sub_busy) k = Keys{};
         pg.List(la, lb, k, input);
         if (!st.sub_controls) { // (an action of this frame may have opened the sub page)

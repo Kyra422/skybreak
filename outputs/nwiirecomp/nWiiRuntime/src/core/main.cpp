@@ -638,8 +638,8 @@ int main(int argc, char **argv) {
     int mode = nwii::runtime::Config::get().input_mode;
     switch (mode) {
     case 1: 
-      std::cout << "[Input] Mode 1 (Bluetooth Wiimote) not implemented, "
-                   "falling back to keyboard+mouse" << std::endl;
+      std::cout << "[Input] Mode 1: Bluetooth Wii Remote Plus with native buttons, MotionPlus and Nunchuk; keyboard fallback." << std::endl;
+      im.add_source(std::make_unique<GamepadSource>());
       im.add_source(std::make_unique<MouseKeyboardSource>());
       break;
     case 2: 
@@ -711,7 +711,7 @@ int main(int argc, char **argv) {
       // INPUT13: controller thread (input/sources/gamepad_source.h). Not for replays (they disable the
       // live sources; a probe must not open the player's controller) nor for keyboard-only modes.
       const int im = nwii::runtime::Config::get().input_mode;
-      if (im != 1 && im != 5 && im != 7 && nwii::runtime::input::InputManager::get().live_sources_enabled())
+      if (im != 5 && im != 7 && nwii::runtime::input::InputManager::get().live_sources_enabled())
         nwii::runtime::input::start_controller_thread(nwii::runtime::input::sdl_controller_api());
     }
 

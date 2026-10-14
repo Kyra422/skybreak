@@ -81,3 +81,14 @@ jobs:
           /tmp/wii-ir-test.cpp -o /tmp/wii-ir-test
       - name: Check report 37, real acceleration, infrared dots and initialization failures
         run: /tmp/wii-ir-test
+  pairing-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Windows Wii pairing without touching Bluetooth hardware
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do call "%%i\Common7\Tools\VsDevCmd.bat" -arch=amd64 -host_arch=amd64
+          cl /nologo /EHsc /std:c++20 /Ioutputs/nwiirecomp/nWiiRuntime/src tests/wii_pairing_test.cpp /Fewii-pairing-test.exe
+          if errorlevel 1 exit /b 1
+          wii-pairing-test.exe

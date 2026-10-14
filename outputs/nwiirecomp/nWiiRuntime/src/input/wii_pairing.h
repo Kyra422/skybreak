@@ -42,6 +42,10 @@ inline void scan() {
                     if(std::wstring(device.szName)!=L"Nintendo RVL-CNT-01-TR" &&
                        std::wstring(device.szName)!=L"Nintendo RVL-CNT-01") continue;
                     ++found;
+                    // Windows-paired remotes use the same connection. Re-enabling
+                    // their already active HID service can return error 31 even
+                    // while SDL is receiving controller data successfully.
+                    if(device.fConnected) {++ready;continue;}
                     DWORD error=ERROR_SUCCESS;
                     if(!device.fAuthenticated && !device.fConnected) {
                         // SYNC uses the host radio's six address bytes as the PIN.

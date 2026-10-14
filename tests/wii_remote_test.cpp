@@ -39,6 +39,7 @@ static std::array<Uint8, SDL_NUM_SCANCODES> keys{};
 static std::array<Uint8, SDL_CONTROLLER_BUTTON_MAX> buttons{};
 static std::array<Sint16, SDL_CONTROLLER_AXIS_MAX> axes{};
 static bool connected = true, focused = true, has_sensors = true, nun = true;
+static unsigned sensor_enable_calls=0, sensor_disable_calls=0;
 static const char* controller_name="Nintendo Wii Remote with Nunchuk";
 static int mouse_x = 320, mouse_y = 240, rel_x = 0, rel_y = 0;
 static Uint32 mouse_buttons = 0;
@@ -58,7 +59,7 @@ SDL_GameController* SDLCALL SDL_GameControllerOpen(int index) {
 Uint8 SDLCALL SDL_GameControllerGetButton(SDL_GameController*, SDL_GameControllerButton b) { return buttons.at(b); }
 Sint16 SDLCALL SDL_GameControllerGetAxis(SDL_GameController*, SDL_GameControllerAxis a) { return axes.at(a); }
 SDL_bool SDLCALL SDL_GameControllerHasSensor(SDL_GameController*, SDL_SensorType sensor) { return (sensor==SDL_SENSOR_ACCEL_L ? nun : has_sensors) ? SDL_TRUE : SDL_FALSE; }
-int SDLCALL SDL_GameControllerSetSensorEnabled(SDL_GameController*, SDL_SensorType, SDL_bool) { return 0; }
+int SDLCALL SDL_GameControllerSetSensorEnabled(SDL_GameController*, SDL_SensorType, SDL_bool enabled) { if(enabled) ++sensor_enable_calls; else ++sensor_disable_calls; return 0; }
 int SDLCALL SDL_GameControllerGetSensorData(SDL_GameController*, SDL_SensorType, float*, int) { return -1; }
 void SDLCALL SDL_AddEventWatch(SDL_EventFilter f, void*) { watch_fn = f; }
 SDL_JoystickID SDLCALL SDL_JoystickGetDeviceInstanceID(int index) { return index; }
@@ -79,7 +80,8 @@ static void check(int id, bool v, const std::string& what) {
 #include <thread>
 #include <chrono>
 static ControllerApi ir_api;
-static bool bar=false;
+static bool bar=false, ir_supported=true;
+
 static uint16_t ir_serial=0;
 static float ir_data[4]={0.5f,0.5f,1.f,0.f};
 static uint64_t now=1'000'000'000, sensor_time=1000;
@@ -102,8 +104,25 @@ static void clear() {buttons.fill(0);axes.fill(0);keys.fill(0);rel_x=rel_y=0;}
 int main() {
  ir_api.num_joysticks=[](){return connected?1:0;};
  ir_api.wii_ir=[](SDL_GameController*,float out[4],bool& valid,uint16_t& serial){
-  std::copy(ir_data,ir_data+4,out);valid=bar;serial=ir_serial;return true;};
+  std::copy(ir_data,ir_data+4,out);valid=bar;serial=ir_serial;return ir_supported;};
  pad_hub().threaded.store(true);
+ capture_controllers(&ir_api);
+ check(8,sensor_enable_calls==3 && sensor_disable_calls==0,"launcher capture starts gyro, accel and Nunchuk without guest polling");
+ check(8,g_wii_ir_status[0].load()==WiiIRStatus::Waiting,"no first IR report is distinguished from bar absent");
+ ++ir_serial;capture_controllers(&ir_api);
+ check(8,g_wii_ir_status[0].load()==WiiIRStatus::NoBar,"live empty IR report is reported as bar absent in launcher");
+ bar=true;++ir_serial;capture_controllers(&ir_api);
+ check(8,g_wii_ir_status[0].load()==WiiIRStatus::Visible,"launcher sees physical IR before gameplay");
+ std::this_thread::sleep_for(std::chrono::milliseconds(130));capture_controllers(&ir_api);
+ check(8,g_wii_ir_status[0].load()==WiiIRStatus::Stalled,"stalled camera has its own status");
+ ir_supported=false;capture_controllers(&ir_api);
+ check(8,g_wii_ir_status[0].load()==WiiIRStatus::Unavailable,"unsupported IR transport is distinguished from absent bar");
+ ir_supported=true;bar=false;++ir_serial;capture_controllers(&ir_api);
+ check(8,sensor_enable_calls==3 && sensor_disable_calls==0,"repeated launcher capture leaves native sensors enabled");
+ connected=false;capture_controllers(&ir_api);
+ check(8,g_wii_ir_status[0].load()==WiiIRStatus::Disconnected,"disconnect clears launcher IR status");
+ connected=true;capture_controllers(&ir_api);
+ check(8,wii_ir_status(true,false,false,false,false)==WiiIRStatus::Starting,"not enabled means starting camera, never absent bar");
  InputManager::get().add_source(std::make_unique<GamepadSource>());
  InputManager::get().add_source(std::make_unique<MouseKeyboardSource>());
  poll();packet();
@@ -156,6 +175,17 @@ int main() {
  nun=false;connected=false;poll();connected=true;poll();packet();
  check(5,!last.nunchuk.available && last.nunchuk.buttons==0,"missing Nunchuk does not fabricate attachment/buttons");
 
+
+ auto& hub=pad_hub();const auto watchdog_now=pad_now_ms();
+ hub.busy_what.store(int(PadBusy::WiiSensorSetup));hub.busy_since_ms.store(watchdog_now-350);
+ check(7,!pad_snapshot_stale(hub,watchdog_now),"350 ms Wii IR initialization must retain the controller snapshot");
+ packet();check(7,g_wii_remote_active[0] && g_gyro_drives_channel[0],"sensor setup does not queue sensor disable or lose native ownership");
+ hub.busy_what.store(int(PadBusy::Capture));
+ check(7,pad_snapshot_stale(hub,watchdog_now),"ordinary blocked capture still releases inputs after 250 ms");
+ hub.busy_what.store(int(PadBusy::WiiSensorSetup));hub.busy_since_ms.store(watchdog_now-4100);
+ check(7,pad_snapshot_stale(hub,watchdog_now),"a genuinely stalled sensor setup still times out");
+ hub.busy_what.store(int(PadBusy::None));hub.busy_since_ms.store(0);
+ check(7,!pad_snapshot_stale(hub,watchdog_now),"completed setup restores normal capture");
  bar=true;++ir_serial;ir_data[0]=.4f;ir_data[1]=.3f;packet();
  check(6,g_wii_sensorbar_visible[0] && std::abs(last.ir_x-.5)<.0001 && std::abs(last.ir_y-.5)<.0001,"first visible bar sets the current pointing reference");
  ++ir_serial;ir_data[0]=.55f;ir_data[1]=.4f;ir_data[2]=.8f;ir_data[3]=-.6f;packet();

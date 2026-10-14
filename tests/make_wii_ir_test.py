@@ -30,6 +30,7 @@ struct SDL_DriverWii_Context {
  unsigned char m_ucMotionPlusMode=0,m_rgucReadBuffer[22]{};
  int m_eExtensionControllerType=k_eWiiExtensionControllerType_Nunchuk;
  unsigned short m_unIRSerial=0;
+ unsigned m_unIRDiagnosticTicks=0;
 };
 struct _SDL_Joystick {};
 static std::array<short,12> axes{};
@@ -45,6 +46,8 @@ static SDL_bool WriteRegister(SDL_DriverWii_Context*,Uint32 addr,const Uint8*,in
 #define SDL_memcpy std::memcpy
 #define SDL_zero(x) std::memset(&(x),0,sizeof(x))
 #define SDL_LogDebug(...) ((void)0)
+#define SDL_LogInfo(...) ((void)0)
+#define SDL_GetTicks() Uint32(100)
 '''+report+'\n'+data+'\n'+'''
 static WiiButtonData decoded{};
 static void HandleButtonData(SDL_DriverWii_Context*,SDL_Joystick*,WiiButtonData* data){decoded=*data;}

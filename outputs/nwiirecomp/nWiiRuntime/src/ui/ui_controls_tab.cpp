@@ -576,7 +576,11 @@ void RenderControlsTab(Settings& e, const Settings& o, const ControlsTabHost& h)
     section("Wii Remote Plus (Bluetooth)");
     hint("Attach your Nunchuk, press the red SYNC button, then select Pair Wii Remote. Keep the LEDs flashing while searching.");
     const auto pairing = runtime::input::wii_pairing_status();
-    if (!pairing.busy && ImGui::Button("Pair Wii Remote")) runtime::input::start_wii_pairing();
+    const bool remote_connected=std::strcmp(FirstPadType(),"Wii Remote")==0;
+    if(remote_connected) hint("Your Wii Remote is already connected through Windows. You do not need to pair it again.");
+    ImGui::BeginDisabled(pairing.busy || remote_connected);
+    if (ImGui::Button("Pair Wii Remote")) runtime::input::start_wii_pairing();
+    ImGui::EndDisabled();
     track("Pair Wii Remote");
     if (!pairing.message.empty()) ImGui::TextWrapped("%s", pairing.message.c_str());
     if (runtime::input::g_wii_remote_active[0].load()) {
@@ -584,10 +588,10 @@ void RenderControlsTab(Settings& e, const Settings& o, const ControlsTabHost& h)
         hint("A = A, B = B. Nunchuk stick = move, Z = lock on, C = look. Down centres the pointer. Calibrate the gyro below if it drifts.");
     }
     hint("Normal Bluetooth. A powered Wii/Wii U sensor bar supplies the IR lights; the Wii Remote sends readings to the PC. The remote speaker is not implemented.");
-    if(runtime::input::g_wii_remote_active[0].load())
-        ImGui::TextUnformatted(runtime::input::g_wii_sensorbar_visible[0].load()
-            ? "Sensor bar: visible (physical IR tracking active)"
-            : "Sensor bar: not visible. Point the remote at the powered bar. Down centres the pointer; calibrate the gyro separately.");
+    if(remote_connected) {
+        ImGui::TextUnformatted(runtime::input::wii_ir_status_text(runtime::input::g_wii_ir_status[0].load()));
+        hint("Point at both ends of the powered sensor bar. If camera reports are missing, reconnect the remote. Down centres the in-game pointer; gyro calibration is separate.");
+    }
 
     // ---- presets
     section("Besturing");

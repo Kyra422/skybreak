@@ -128,6 +128,7 @@ struct CaptureDevice {
     bool wii_remote = false, has_nunchuk = false;
     uint16_t ir_serial=0;
     uint64_t ir_ms=0;
+    bool ir_visible=false;
     uint64_t rumble_serial = 0;
     int type = 0;
     float gyro_rate = 0.0f;
@@ -153,8 +154,24 @@ CaptureState& capture_state() {
 
 void apply_requests(CaptureDevice& d, int slot) {
     auto& hub = pad_hub();
-    const int want = hub.want_sensors[size_t(slot)].load() | (calibration_requested(slot) ? kWantGyroAccel : 0);
+    // Native remotes need their camera in launcher Controls too, before the
+    // game-side source has run. Keep native sensors on across menus/focus loss;
+    // the guest still releases its input normally when it loses focus.
+    const int want = d.wii_remote ? kWantGyroAccel :
+        hub.want_sensors[size_t(slot)].load() | (calibration_requested(slot) ? kWantGyroAccel : 0);
     if (want != d.applied_sensors) {
+        // Real IR initialization deliberately takes ~350 ms and a failed register
+        // ACK can take 3 s. The ordinary 250 ms driver guard must not cancel this
+        // request, or sensor off/on requests create an endless restart loop.
+        struct SensorSetupScope {
+            PadHub& hub;bool active;int previous;
+            SensorSetupScope(PadHub& h,bool enabled):hub(h),active(enabled),previous(h.busy_what.load()) {
+                if(active) {hub.busy_what.store(int(PadBusy::WiiSensorSetup));hub.busy_since_ms.store(pad_now_ms());}
+            }
+            ~SensorSetupScope() {
+                if(active) {hub.busy_since_ms.store(pad_now_ms());hub.busy_what.store(previous);}
+            }
+        } setup(hub,d.wii_remote && hub.threaded.load());
         const bool gyro_on = (want & (kWantGyroAccel | kWantGyroOnly)) != 0;
         const bool accel_on = (want & kWantGyroAccel) != 0;
         const bool gyro_ok = aurora_sensors::transition(d.controller, SDL_SENSOR_GYRO, gyro_on, d.gyro_enabled);
@@ -279,8 +296,16 @@ void capture_controllers(const ControllerApi* api) {
                 if(serial!=d.ir_serial) {d.ir_serial=serial;d.ir_ms=now;}
                 p.ir_valid=valid && d.ir_ms && now>=d.ir_ms && now-d.ir_ms<=100;
                 p.ir_x=data[0];p.ir_y=data[1];p.ir_horizon_x=data[2];p.ir_horizon_y=data[3];
+                if(p.ir_valid!=d.ir_visible) {
+                    d.ir_visible=p.ir_valid;
+                    std::printf("[Input] Wii sensor bar %s (slot %d, IR packet %u)\n",p.ir_valid?"VISIBLE":"not visible",s,unsigned(serial));
+                    std::fflush(stdout);
+                }
             }
         }
+        if(d.wii_remote)
+            p.ir_status=wii_ir_status(p.ir_supported,d.gyro_enabled || d.accel_enabled,
+                d.ir_ms!=0,d.ir_ms && now>=d.ir_ms && now-d.ir_ms<=100,p.ir_valid);
         p.gyro_rate_hz = d.gyro_rate;
         std::memcpy(p.name, d.name, sizeof p.name);
         for (int b = 0; b < kPadButtonCount; ++b)
@@ -317,6 +342,13 @@ void capture_controllers(const ControllerApi* api) {
             push_controller_event(ControllerEventKind::Connected, 0, st.slot[0].name, pad_type_name(st.slot[0].type),
                                   out.pad[0].has_gyro && out.pad[0].has_accel);
             break;
+        }
+    }
+    for(int s=0;s<4;++s) {
+        const auto status=out.pad[size_t(s)].ir_status;
+        if(g_wii_ir_status[s].exchange(status)!=status) {
+            std::printf("[Input] Wii IR slot %d: %s\n",s,wii_ir_status_text(status));
+            std::fflush(stdout);
         }
     }
     out.serial = ++st.serial;
@@ -425,7 +457,9 @@ void GamepadSource::check_controller_thread() {
     }();
     const uint64_t since = hub.busy_since_ms.load();
     const uint64_t now = pad_now_ms();
-    if (since != 0 && now > since && now - since >= limit_ms) {
+    const uint64_t warning_limit=hub.busy_what.load()==int(PadBusy::WiiSensorSetup)
+        ? std::max(limit_ms,kWiiSensorSetupTimeoutMs) : limit_ms;
+    if (since != 0 && now > since && now - since >= warning_limit) {
         if (!blocked_reported) {
             blocked_reported = true;
             blocked_since_ms = since;
@@ -485,8 +519,7 @@ void GamepadSource::update(GameCubePadState pads[4], WiimoteState motes[4]) {
         // The controller thread is stuck inside SDL (a driver call): its last snapshot would keep a held stick or
         // button held for as long as the driver hangs, so the controllers read as neutral meanwhile.
         static const PadSnapshotSet kNoPads{};
-        const uint64_t since = hub.busy_since_ms.load();
-        if (since != 0 && pad_now_ms() > since + 250) published = &kNoPads;
+        if (pad_snapshot_stale(hub,pad_now_ms())) published = &kNoPads;
     }
     const PadSnapshotSet& snapshot = *published;
 
