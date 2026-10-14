@@ -15,6 +15,10 @@ applications rather than PowerShell functions or aliases.
 
 ## Installer repair package
 
+[Download the repaired Alpha 3 installer](https://github.com/Kyra422/skybreak/releases/download/v0.23.0-alpha.3/SkyBreak-Alpha3-Installer-Fix.zip).
+It is published alongside the original assets on the Alpha 3 release page.
+Use `SHA256SUMS-installer-fix.txt` to verify this download.
+
 A repair ZIP can retain the published Alpha 3 game sources and installer
 executables while replacing only the build script, regenerating its integrity
 manifest, and adding English instructions. It must not silently overwrite the

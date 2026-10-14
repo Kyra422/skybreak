@@ -13,7 +13,7 @@ game code.
 
 ## Tester release — 0.23.0 Alpha 3
 
-[Download the Windows tester package](https://github.com/Kyra422/skybreak/releases/tag/v0.23.0-alpha.3).
+[Download the Windows tester package with the installer repair](https://github.com/Kyra422/skybreak/releases/download/v0.23.0-alpha.3/SkyBreak-Alpha3-Installer-Fix.zip).
 Extract the entire ZIP and run **SkyBreak-Setup.exe**. The playable game is built
 locally from your own supported disc; no original game files are included.
 
